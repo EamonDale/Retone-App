@@ -49,6 +49,10 @@ export default function ProductCard({ product, onClick }: Props) {
         <Text className='card-name'>{product.name}</Text>
       </View>
       <View className='card-right'>
+        <View className='card-stock'>
+          <Text className='card-stock-label'>数量</Text>
+          <Text className='card-stock-value'>{product.stockQuantity || 1}</Text>
+        </View>
         <Text className='card-days' style={{ color }}>{describeDays(days)}</Text>
         <Text className='card-date'>{tsToDateStr(product.expiryDate)} 到期</Text>
       </View>

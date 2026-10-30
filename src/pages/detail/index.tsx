@@ -1,7 +1,7 @@
 import { View, Text, Image, Button } from '@tarojs/components';
 import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import { useState } from 'react';
-import { getProduct, markUsedUp, removeProduct } from '../../services/db';
+import { getProduct, markUsedUp, removeProduct, updateProduct } from '../../services/db';
 import { daysLeftOfTs, describeDays, tsToDateStr } from '../../utils/date';
 import { COLORS, categoryInfo } from '../../utils/constants';
 import type { UrgencyLevel } from '../../utils/constants';
@@ -40,6 +40,7 @@ export default function Detail() {
     days < 0 ? 'expired' : days <= 3 ? 'urgent' : days <= 10 ? 'near' : 'safe';
   const color = COLORS[level];
   const cat = categoryInfo(product.category);
+  const stock = product.stockQuantity || 1;
 
   const previewImage = () => {
     if (product.photoFileID) Taro.previewImage({ urls: [product.photoFileID] });
@@ -68,6 +69,28 @@ export default function Detail() {
       setTimeout(() => Taro.navigateBack(), 600);
     } catch {
       Taro.showToast({ title: '删除失败', icon: 'none' });
+    }
+  };
+  const onDecreaseStock = async () => {
+    if (stock <= 1) {
+      Taro.showToast({ title: '数量不能少于1', icon: 'none' });
+      return;
+    }
+    try {
+      await updateProduct(id, { stockQuantity: stock - 1 });
+      setProduct({ ...product, stockQuantity: stock - 1 });
+      Taro.showToast({ title: '数量已减少', icon: 'success' });
+    } catch {
+      Taro.showToast({ title: '操作失败', icon: 'none' });
+    }
+  };
+  const onIncreaseStock = async () => {
+    try {
+      await updateProduct(id, { stockQuantity: stock + 1 });
+      setProduct({ ...product, stockQuantity: stock + 1 });
+      Taro.showToast({ title: '数量已增加', icon: 'success' });
+    } catch {
+      Taro.showToast({ title: '操作失败', icon: 'none' });
     }
   };
 
@@ -121,6 +144,14 @@ export default function Detail() {
               <Text className='row-value'>{product.note}</Text>
             </View>
           ) : null}
+          <View className='row'>
+            <Text className='row-label'>产品数量</Text>
+            <View className='row-stock'>
+              <Button className='stock-btn minus' onClick={onDecreaseStock}>-</Button>
+              <Text className='stock-value'>{stock}</Text>
+              <Button className='stock-btn plus' onClick={onIncreaseStock}>+</Button>
+            </View>
+          </View>
         </View>
       </View>
 

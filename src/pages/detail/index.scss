@@ -124,6 +124,66 @@
   max-width: 70%;
 }
 
+.row-stock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  background: linear-gradient(135deg, #f7f8fa 0%, #e8eaed 100%);
+  padding: 8rpx 14rpx;
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  border: 2rpx solid var(--line);
+}
+
+.stock-value {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 55rpx;
+  text-align: center;
+  text-shadow: 0 1rpx 4rpx rgba(61, 126, 255, 0.2);
+  letter-spacing: 1rpx;
+}
+
+.stock-btn {
+  width: 50rpx;
+  height: 50rpx;
+  border-radius: 50%;
+  border: 2rpx solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 28rpx;
+  font-weight: 600;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stock-btn::after {
+  border: none;
+}
+
+.stock-btn:active {
+  background: var(--primary);
+  color: #ffffff;
+  transform: scale(0.9);
+  border-color: var(--primary);
+}
+
+.stock-btn.minus:active {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.stock-btn.plus:active {
+  background: var(--red);
+  border-color: var(--red);
+}
+
 .actions {
   display: flex;
   margin-top: 40rpx;

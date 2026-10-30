@@ -38,6 +38,11 @@ export default function Add() {
   const [photoFileID, setPhotoFileID] = useState('');
   const [hl, setHl] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showRecognizeModal, setShowRecognizeModal] = useState(false);
+  const [showTextModal, setShowTextModal] = useState(false);
+  const [textInput, setTextInput] = useState('');
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [stockQuantity, setStockQuantity] = useState<string>('1');
 
   // 编辑模式：回填表单（先同步分类注册表，避免「产品挂在已删分类」时误判）
   useEffect(() => {
@@ -177,6 +182,26 @@ export default function Add() {
     if (url) Taro.previewImage({ urls: [url] });
   };
 
+  const handleTextRecognize = async () => {
+    const text = textInput.trim();
+    if (!text) {
+      Taro.showToast({ title: '请输入文字', icon: 'none' });
+      return;
+    }
+
+    setIsRecognizing(true);
+    try {
+      const parsed = await recognizeProductInfo(text);
+      applyParsed(parsed);
+      setTextInput('');
+    } catch (e) {
+      console.error('[add] 文字识别失败', e);
+      toast('识别失败，请检查文字格式');
+    } finally {
+      setIsRecognizing(false);
+    }
+  };
+
   const onSave = async () => {
     if (saving) return;
     const nameTrim = name.trim();
@@ -221,7 +246,8 @@ export default function Add() {
         shelfLifeLabel: amount > 0 ? `${amount}${unit.label}` : '',
         expiryDate: dateStrToTs(expiryDate),
         note: note.trim(),
-        photoFileID: fileID || ''
+        photoFileID: fileID || '',
+        stockQuantity: parseInt(stockQuantity, 10) || 1
       };
       if (editId) {
         await updateProduct(editId, data);
@@ -241,34 +267,60 @@ export default function Add() {
 
   return (
     <View className='page add-page'>
-      {/* 识别入口：拍照 OCR / 相册 OCR */}
-      <View className='photo-row'>
-        <View className='photo-btn' onClick={() => chooseImage('camera')}>
-          <Text className='photo-btn-ico'>📷</Text>
-          <Text className='photo-btn-tit'>拍照识别</Text>
-          <Text className='photo-btn-sub'>拍标签自动录入</Text>
-        </View>
-        <View className='photo-btn' onClick={() => chooseImage('album')}>
-          <Text className='photo-btn-ico'>🖼️</Text>
-          <Text className='photo-btn-tit'>相册选图</Text>
-          <Text className='photo-btn-sub'>选图自动识别</Text>
+      {/* 识别功能模块 */}
+      <View className='card recognize-card'>
+        <View className='card-title'>识别功能</View>
+        <View className='recognize-section'>
+          <View className='recognize-btn' onClick={() => setShowRecognizeModal(true)}>
+            <View className='recognize-info'>
+              <Text className='recognize-text'>点击选择识别方式</Text>
+              <Text className='recognize-subtext'>支持拍照识别、图片识别、文字识别</Text>
+            </View>
+            <View className='recognize-icon-wrapper'>
+              <Text className='recognize-icon'>🔍</Text>
+            </View>
+          </View>
         </View>
       </View>
 
-      {(photoTemp || photoFileID) && (
-        <View className='photo-wrap'>
-          <Image
-            className='photo-preview'
-            src={photoFileID || photoTemp}
-            mode='aspectFill'
-            onClick={previewPhoto}
-          />
-          <View className='photo-foot'>
-            <Text className='photo-tip'>点击图片可预览大图</Text>
-            <Text className='photo-retry' onClick={reOcr}>🔄 重新识别</Text>
-          </View>
+      {/* 产品图片模块 */}
+      <View className='card photo-card'>
+        <View className='card-title'>产品图片</View>
+        <View className='photo-upload-section'>
+          {(photoTemp || photoFileID) ? (
+            <View className='photo-preview-wrap'>
+              <Image
+                className='photo-preview'
+                src={photoFileID || photoTemp}
+                mode='aspectFill'
+                onClick={previewPhoto}
+              />
+              <View className='photo-actions'>
+                <View className='photo-btn-small' onClick={previewPhoto}>
+                  预览
+                </View>
+                <View className='photo-btn-small' onClick={() => chooseImage('camera')}>
+                  拍照
+                </View>
+                <View className='photo-btn-small photo-btn-small-red' onClick={() => {
+                  setPhotoTemp('');
+                  setPhotoFileID('');
+                }}>
+                  删除
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View className='upload-placeholder' onClick={() => chooseImage('album')}>
+              <View className='upload-icon-wrapper'>
+                <Text className='upload-icon'>📷</Text>
+              </View>
+              <Text className='upload-text'>点击上传产品图片</Text>
+              <Text className='upload-subtext'>可选填</Text>
+            </View>
+          )}
         </View>
-      )}
+      </View>
 
       <View className='card'>
         <View className='card-title'>基本信息</View>
@@ -281,6 +333,18 @@ export default function Add() {
             placeholder='如：纯牛奶'
             placeholderClass='placeholder'
             onInput={(e) => setName(e.detail.value)}
+          />
+        </View>
+
+        <View className='field'>
+          <Text className='label'>产品数量<Text className='req'>*</Text></Text>
+          <Input
+            className='input'
+            type='number'
+            value={stockQuantity}
+            placeholder='如：1'
+            placeholderClass='placeholder'
+            onInput={(e) => setStockQuantity(e.detail.value)}
           />
         </View>
 
@@ -303,33 +367,13 @@ export default function Add() {
         </View>
       </View>
 
-      <View className='card'>
-        <View className='card-title'>日期信息</View>
-        <View className='field'>
-          <Text className='label'>到期日<Text className='req'>*</Text></Text>
-          <View className='expiry-row'>
-            <Picker
-              mode='date'
-              value={expiryDate || todayStr()}
-              onChange={(e) => {
-                setExpiryDate(e.detail.value);
-                setExpiryAuto(false);
-              }}
-            >
-              <View
-                className={`input picker input-box${expiryDate ? '' : ' placeholder'}${
-                  hl ? ' hl' : ''
-                }`}
-              >
-                {expiryDate || '选择到期日'}
-              </View>
-            </Picker>
-            {expiryAuto && <Text className='auto-tag'>自动计算</Text>}
-          </View>
+      <View className='card expiry-card'>
+        <View className='card-title'>到期日</View>
+        <View className='calc-hint'>
+          填了「生产日期 + 保质期」会自动算出到期日，也可以直接选到期日
         </View>
-
         <View className='field'>
-          <Text className='label'>生产日期<Text className='opt'>选填</Text></Text>
+          <Text className='label'>生产日期</Text>
           <Picker
             mode='date'
             value={productionDate || todayStr()}
@@ -337,9 +381,8 @@ export default function Add() {
             onChange={(e) => setProductionDate(e.detail.value)}
           >
             <View
-              className={`input picker input-box${productionDate ? '' : ' placeholder'}${
-                hl ? ' hl' : ''
-              }`}
+              className={`input picker input-box${productionDate ? '' : ' placeholder'}${hl ? ' hl' : ''
+                }`}
             >
               {productionDate || '选择生产日期'}
             </View>
@@ -347,7 +390,7 @@ export default function Add() {
         </View>
 
         <View className='field'>
-          <Text className='label'>保质期<Text className='opt'>选填</Text></Text>
+          <Text className='label'>保质期</Text>
           <View className='shelf-row'>
             <Input
               className='input shelf-amount input-box'
@@ -368,11 +411,28 @@ export default function Add() {
             </Picker>
           </View>
         </View>
-        <View className='calc-hint'>
-          填了「生产日期 + 保质期」会自动算出到期日，也可以直接选到期日
+        <View className='field'>
+          <Text className='label'>到期日<Text className='req'>*</Text></Text>
+          <View className='expiry-row'>
+            <Picker
+              mode='date'
+              value={expiryDate || todayStr()}
+              onChange={(e) => {
+                setExpiryDate(e.detail.value);
+                setExpiryAuto(false);
+              }}
+            >
+              <View
+                className={`input picker input-box${expiryDate ? '' : ' placeholder'}${hl ? ' hl' : ''
+                  }`}
+              >
+                {expiryDate || '选择到期日'}
+              </View>
+            </Picker>
+            {expiryAuto && <Text className='auto-tag'>自动计算</Text>}
+          </View>
         </View>
       </View>
-
       <View className='card'>
         <View className='card-title'>备注</View>
         <View className='field'>
@@ -386,6 +446,86 @@ export default function Add() {
           />
         </View>
       </View>
+
+      {/* 识别弹窗 */}
+      {showRecognizeModal && (
+        <View className='modal-overlay' onClick={() => setShowRecognizeModal(false)}>
+          <View className='modal-content' onClick={(e) => e.stopPropagation()}>
+            <View className='modal-header'>
+              <Text className='modal-title'>选择识别方式</Text>
+              <Text className='modal-close' onClick={() => setShowRecognizeModal(false)}>✕</Text>
+            </View>
+            <View className='modal-body'>
+              <View className='modal-option' onClick={() => {
+                setShowRecognizeModal(false);
+                chooseImage('camera');
+              }}>
+                <View className='modal-option-icon camera-icon'>📷</View>
+                <View className='modal-option-info'>
+                  <Text className='modal-option-text'>拍照识别</Text>
+                  <Text className='modal-option-desc'>拍摄标签自动录入</Text>
+                </View>
+              </View>
+              <View className='modal-option' onClick={() => {
+                setShowRecognizeModal(false);
+                chooseImage('album');
+              }}>
+                <View className='modal-option-icon album-icon'>🖼️</View>
+                <View className='modal-option-info'>
+                  <Text className='modal-option-text'>图片识别</Text>
+                  <Text className='modal-option-desc'>从相册选择图片识别</Text>
+                </View>
+              </View>
+              <View className='modal-option' onClick={() => {
+                setShowRecognizeModal(false);
+                setShowTextModal(true);
+              }}>
+                <View className='modal-option-icon text-icon'>📝</View>
+                <View className='modal-option-info'>
+                  <Text className='modal-option-text'>文字识别</Text>
+                  <Text className='modal-option-desc'>粘贴文字自动解析</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 文字识别弹窗 */}
+      {showTextModal && (
+        <View className='modal-overlay' onClick={() => setShowTextModal(false)}>
+          <View className='modal-content modal-text-content' onClick={(e) => e.stopPropagation()}>
+            <View className='modal-header'>
+              <Text className='modal-title'>文字识别</Text>
+              <Text className='modal-close' onClick={() => setShowTextModal(false)}>✕</Text>
+            </View>
+            <View className='modal-body modal-text-body'>
+              <Textarea
+                className='text-input'
+                value={textInput}
+                placeholder='请粘贴产品标签上的文字，如：保质期 6 个月，生产日期 2024-01-01'
+                placeholderClass='text-placeholder'
+                onInput={(e) => setTextInput(e.detail.value)}
+                autoHeight
+              />
+              <View className='text-actions'>
+                <Button
+                  className='text-btn'
+                  disabled={!textInput.trim() || isRecognizing}
+                  onClick={handleTextRecognize}
+                >
+                  {isRecognizing ? (
+                    <View className='btn-loading'>
+                      <Text className='loading-icon'>⏳</Text>
+                      <Text className='loading-text'>识别中...</Text>
+                    </View>
+                  ) : '开始识别'}
+                </Button>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* 底部固定保存栏 */}
       <View className='save-bar'>
