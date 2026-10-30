@@ -96,6 +96,13 @@ export default function Profile() {
       </View>
 
       <View className='p-card'>
+        <View className='p-row tap' onClick={() => Taro.navigateTo({ url: '/pages/categories/index' })}>
+          <View className='p-left'>
+            <Text className='p-title'>分类管理</Text>
+            <Text className='p-desc'>添加自定义分类，支持改名与删除</Text>
+          </View>
+          <Text className='p-arrow'>›</Text>
+        </View>
         <View className='p-row tap' onClick={onSubscribe}>
           <View className='p-left'>
             <Text className='p-title'>订阅消息授权</Text>

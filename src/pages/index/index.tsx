@@ -7,9 +7,11 @@ import StatBar from '../../components/StatBar';
 import EmptyState from '../../components/EmptyState';
 import type { StatFilter } from '../../components/StatBar';
 import { fetchActiveProducts } from '../../services/db';
+import { loadCustomCategories } from '../../services/categories';
 import { requestSubscribe } from '../../services/notify';
 import { daysLeftOfTs, todayStr } from '../../utils/date';
 import { GUIDE_STORAGE_KEY } from '../../utils/constants';
+import { allTabs } from '../../utils/constants';
 import type { Product } from '../../types';
 import './index.scss';
 
@@ -23,6 +25,7 @@ export default function Index() {
   const [stat, setStat] = useState<StatFilter>('all');
   const [showGuide, setShowGuide] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [tabs, setTabs] = useState(allTabs());
 
   const load = useCallback(async () => {
     try {
@@ -41,6 +44,14 @@ export default function Index() {
   }, []);
 
   useDidShow(() => {
+    // 同步自定义分类；当前选中分类被删除时回退「全部」
+    loadCustomCategories().then(() => {
+      const nextTabs = allTabs();
+      setTabs(nextTabs);
+      if (category !== 'all' && !nextTabs.some((c) => c.key === category)) {
+        setCategory('all');
+      }
+    });
     load();
     // 每天温和引导一次订阅（PRD 3.4.2）
     setShowGuide(Taro.getStorageSync(GUIDE_STORAGE_KEY) !== todayStr());
@@ -94,7 +105,7 @@ export default function Index() {
   return (
     <View className='page index-page'>
       <StatBar {...stats} value={stat} onChange={setStat} />
-      <CategoryTab value={category} onChange={setCategory} />
+      <CategoryTab value={category} onChange={setCategory} tabs={tabs} />
 
       {showGuide && (
         <View className='guide'>

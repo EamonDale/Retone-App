@@ -1,11 +1,10 @@
-import type { CategoryKey } from './utils/constants';
-
 /** 产品记录，对应云数据库 products 集合（PRD 5.1） */
 export interface Product {
   _id: string;
   _openid?: string;
   name: string;
-  category: CategoryKey;
+  /** 分类 key：内置（food/beauty/...）或自定义（c_xxx，定义见 userSettings 集合） */
+  category: string;
   /** 生产日期时间戳（毫秒），模式 B 录入时可能为空 */
   productionDate?: number | null;
   /** 保质期总天数（月按 30 天、年按 365 天折算） */

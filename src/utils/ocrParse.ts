@@ -18,7 +18,8 @@ export interface OcrParseResult {
 const DAY_WORDS = ['天', '日', 'd', 'day', 'days'];
 const YEAR_WORDS = ['年', 'y', 'year', 'years'];
 
-function normalizeDate(y: number, m: number, d: number): string | null {
+/** 日期合法性归一化：两位年补全，越界返回 null */
+export function normalizeDate(y: number, m: number, d: number): string | null {
   if (y < 100) y += 2000;
   if (y < 2000 || y > 2100) return null;
   if (m < 1 || m > 12 || d < 1 || d > 31) return null;

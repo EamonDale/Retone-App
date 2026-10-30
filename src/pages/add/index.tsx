@@ -1,46 +1,54 @@
 import { View, Text, Image, Input, Textarea, Picker, Button } from '@tarojs/components';
-import Taro, { useRouter } from '@tarojs/taro';
+import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import { useEffect, useMemo, useState } from 'react';
 import { addProduct, getProduct, updateProduct, uploadPhoto } from '../../services/db';
+import { loadCustomCategories } from '../../services/categories';
 import { requestSubscribe } from '../../services/notify';
 import { recognizeProductInfo } from '../../services/ocr';
 import { calcExpiry, dateStrToTs, daysLeftOfTs, todayStr, tsToDateStr } from '../../utils/date';
-import { CATEGORIES, SHELF_UNITS } from '../../utils/constants';
-import type { CategoryKey, ShelfUnitKey } from '../../utils/constants';
+import { allCategories, SHELF_UNITS } from '../../utils/constants';
+import type { ShelfUnitKey } from '../../utils/constants';
+import type { OcrParseResult } from '../../utils/ocrParse';
 import './index.scss';
 
 const toast = (title: string) => Taro.showToast({ title, icon: 'none' });
 
 /**
  * 添加产品（PRD 3.2），带 id 参数时复用为编辑模式（详情页「编辑」跳入）
- * - 分段控件：自动计算（生产日期 + 保质期）/ 直接录入（到期日）
- * - 拍照识别：chooseMedia → 上传云存储 → 云函数 OCR → 正则提取 → 黄色高亮待核对
+ *
+ * 日期填写不区分模式：到期日可直接选择，也可由「生产日期 + 保质期」自动计算，
+ * 手动选择的到期日优先，随时可覆盖。
+ * 识别自动填：拍照/相册 OCR（云函数 ocrProxy），识别失败给出可操作提示，
+ * 用户直接手动填写即可。
  */
 export default function Add() {
   const router = useRouter();
   const editId = router.params.id || '';
 
-  const [mode, setMode] = useState<'auto' | 'direct'>('auto');
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<CategoryKey>('food');
+  const [category, setCategory] = useState<string>('food');
+  const [cats, setCats] = useState(allCategories());
   const [productionDate, setProductionDate] = useState('');
   const [shelfAmount, setShelfAmount] = useState('');
   const [shelfUnit, setShelfUnit] = useState<ShelfUnitKey>('month');
   const [expiryDate, setExpiryDate] = useState('');
+  const [expiryAuto, setExpiryAuto] = useState(false);
   const [note, setNote] = useState('');
   const [photoTemp, setPhotoTemp] = useState('');
   const [photoFileID, setPhotoFileID] = useState('');
-  const [ocrHighlight, setOcrHighlight] = useState(false);
+  const [hl, setHl] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 编辑模式：回填表单
+  // 编辑模式：回填表单（先同步分类注册表，避免「产品挂在已删分类」时误判）
   useEffect(() => {
     if (!editId) return;
     Taro.showLoading({ title: '加载中', mask: true });
-    getProduct(editId)
-      .then((p) => {
+    Promise.all([loadCustomCategories(), getProduct(editId)])
+      .then(([, p]) => {
         setName(p.name);
-        setCategory(p.category);
+        const catsNow = allCategories();
+        setCategory(catsNow.some((c) => c.key === p.category) ? p.category : 'other');
+        setCats(catsNow);
         if (p.productionDate) setProductionDate(tsToDateStr(p.productionDate));
         const labelMatch = p.shelfLifeLabel && p.shelfLifeLabel.match(/^(\d+)(天|个月|年)$/);
         if (labelMatch) {
@@ -51,9 +59,9 @@ export default function Add() {
           setShelfUnit('day');
         }
         setExpiryDate(tsToDateStr(p.expiryDate));
+        setExpiryAuto(false);
         setNote(p.note || '');
         if (p.photoFileID) setPhotoFileID(p.photoFileID);
-        setMode(p.productionDate && p.shelfLifeDays ? 'auto' : 'direct');
       })
       .catch(() => {
         toast('产品加载失败');
@@ -61,37 +69,86 @@ export default function Add() {
       .finally(() => Taro.hideLoading());
   }, [editId]);
 
+  // 从分类管理页返回后刷新分类 chips
+  useDidShow(() => {
+    loadCustomCategories().then(() => setCats(allCategories()));
+  });
+
+  /** 生产日期 + 保质期齐全时自动算出到期日（手动选的到期日会被覆盖，可再改） */
+  const amount = parseInt(shelfAmount, 10);
+  useEffect(() => {
+    if (productionDate && amount > 0) {
+      setExpiryDate(calcExpiry(productionDate, amount, shelfUnit));
+      setExpiryAuto(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productionDate, shelfAmount, shelfUnit]);
+
+  const unit = useMemo(
+    () => SHELF_UNITS.find((u) => u.key === shelfUnit) || SHELF_UNITS[0],
+    [shelfUnit]
+  );
+
+  /** 识别结果统一回填：保质期 / 生产日期 / 到期日 */
+  const applyParsed = (parsed: OcrParseResult) => {
+    let filled = false;
+    if (parsed.shelfLife) {
+      setShelfAmount(String(parsed.shelfLife.amount));
+      setShelfUnit(parsed.shelfLife.unit);
+      filled = true;
+    }
+    if (parsed.productionDate) {
+      setProductionDate(parsed.productionDate);
+      filled = true;
+    }
+    if (parsed.expiryDate) {
+      setExpiryDate(parsed.expiryDate);
+      setExpiryAuto(false);
+      filled = true;
+    }
+    setHl(filled);
+    if (filled) toast('识别完成，请核对高亮字段');
+    else toast('未识别到日期，请手动填写');
+  };
+
+  /** OCR / 云环境问题 → 可操作的提示；其他失败 → 轻提示后手填 */
+  const handleOcrError = (e: unknown) => {
+    console.error('[add] 识别失败', e);
+    const msg = (e as { message?: string })?.message || '';
+    if (/部署|环境|密钥|插件/.test(msg)) {
+      Taro.showModal({ title: '识别功能不可用', content: msg, showCancel: false });
+    } else {
+      toast('识别失败，请手动填写');
+    }
+  };
+
   /** 拍完/选完图：先上传云存储，再调云函数 OCR（PRD 3.2.3） */
   const doOcr = async (tempPath: string) => {
     Taro.showLoading({ title: '识别中…', mask: true });
     try {
       const fileID = await uploadPhoto(tempPath);
       setPhotoFileID(fileID);
-      const parsed = await recognizeProductInfo(fileID);
-      let filled = false;
-      if (parsed.shelfLife) {
-        setShelfAmount(String(parsed.shelfLife.amount));
-        setShelfUnit(parsed.shelfLife.unit);
-        setMode('auto');
-        filled = true;
-      }
-      if (parsed.productionDate) {
-        setProductionDate(parsed.productionDate);
-        setMode('auto');
-        filled = true;
-      }
-      if (!parsed.productionDate && parsed.expiryDate) {
-        setExpiryDate(parsed.expiryDate);
-        setMode('direct');
-        filled = true;
-      }
-      setOcrHighlight(filled);
-      if (filled) toast('识别完成，请核对黄色字段');
-      else toast('未识别到日期，请手动填写');
+      applyParsed(await recognizeProductInfo(fileID));
     } catch (e) {
-      console.error('[add] OCR 失败', e);
-      // 识别失败不阻塞：留空让用户手填（PRD 3.2.3 验收）
-      toast('识别失败，请手动填写');
+      handleOcrError(e);
+    } finally {
+      Taro.hideLoading();
+    }
+  };
+
+  /** 对已选照片重新识别（优先复用已上传的 fileID） */
+  const reOcr = async () => {
+    Taro.showLoading({ title: '识别中…', mask: true });
+    try {
+      let fileID = photoFileID;
+      if (!fileID && photoTemp) {
+        fileID = await uploadPhoto(photoTemp);
+        setPhotoFileID(fileID);
+      }
+      if (!fileID) return;
+      applyParsed(await recognizeProductInfo(fileID));
+    } catch (e) {
+      handleOcrError(e);
     } finally {
       Taro.hideLoading();
     }
@@ -120,29 +177,12 @@ export default function Add() {
     if (url) Taro.previewImage({ urls: [url] });
   };
 
-  const amount = parseInt(shelfAmount, 10);
-  const unit = useMemo(
-    () => SHELF_UNITS.find((u) => u.key === shelfUnit) || SHELF_UNITS[0],
-    [shelfUnit]
-  );
-  const expiryPreview =
-    mode === 'auto' && productionDate && amount > 0 ? calcExpiry(productionDate, amount, shelfUnit) : '';
-
   const onSave = async () => {
     if (saving) return;
     const nameTrim = name.trim();
     if (!nameTrim) return toast('请填写产品名称');
     if (nameTrim.length > 30) return toast('产品名称最长 30 字');
-
-    let expiry = '';
-    if (mode === 'auto') {
-      if (!productionDate) return toast('请选择生产日期');
-      if (!amount || amount <= 0) return toast('请填写保质期');
-      expiry = calcExpiry(productionDate, amount, shelfUnit);
-    } else {
-      if (!expiryDate) return toast('请选择到期日');
-      expiry = expiryDate;
-    }
+    if (!expiryDate) return toast('请选择到期日，或填生产日期 + 保质期自动计算');
 
     // 新增时趁用户点击手势栈内先请求订阅授权（真机要求在点击行为中调用）
     // 用户点允许 = 攒 1 条推送额度（PRD 3.4.2）
@@ -151,7 +191,7 @@ export default function Add() {
     }
 
     // 保存时若到期日早于今天，弹确认（PRD 3.2.3 验收）
-    if (daysLeftOfTs(dateStrToTs(expiry)) < 0) {
+    if (daysLeftOfTs(dateStrToTs(expiryDate)) < 0) {
       const r = await Taro.showModal({
         title: '已过期',
         content: '该产品的到期日早于今天，仍要保存吗？',
@@ -162,15 +202,24 @@ export default function Add() {
 
     setSaving(true);
     try {
+      // 照片上传失败不阻塞保存（云存储不可用时丢弃照片，其余信息照存）
       let fileID = photoFileID;
-      if (!fileID && photoTemp) fileID = await uploadPhoto(photoTemp);
+      if (!fileID && photoTemp) {
+        try {
+          fileID = await uploadPhoto(photoTemp);
+        } catch (e) {
+          console.warn('[add] 照片上传失败', e);
+          Taro.showToast({ title: '照片上传失败，已保存其他信息', icon: 'none' });
+        }
+      }
       const data = {
         name: nameTrim,
-        category,
+        // 表单填写期间分类被删除时兜底到「其他」
+        category: cats.some((c) => c.key === category) ? category : 'other',
         productionDate: productionDate ? dateStrToTs(productionDate) : null,
-        shelfLifeDays: mode === 'auto' && amount > 0 ? amount * unit.factor : null,
-        shelfLifeLabel: mode === 'auto' && amount > 0 ? `${amount}${unit.label}` : '',
-        expiryDate: dateStrToTs(expiry),
+        shelfLifeDays: amount > 0 ? amount * unit.factor : null,
+        shelfLifeLabel: amount > 0 ? `${amount}${unit.label}` : '',
+        expiryDate: dateStrToTs(expiryDate),
         note: note.trim(),
         photoFileID: fileID || ''
       };
@@ -190,39 +239,22 @@ export default function Add() {
     }
   };
 
-  const unitLabels = SHELF_UNITS.map((u) => u.label);
-
   return (
     <View className='page add-page'>
-      {/* 分段控件：两种录入模式（PRD 3.2.1） */}
-      <View className='seg'>
-        <View
-          className={`seg-item${mode === 'auto' ? ' active' : ''}`}
-          onClick={() => setMode('auto')}
-        >
-          自动计算
-        </View>
-        <View
-          className={`seg-item${mode === 'direct' ? ' active' : ''}`}
-          onClick={() => setMode('direct')}
-        >
-          直接录入
-        </View>
-      </View>
-
-      {/* 拍照识别 / 相册选图（PRD 3.2.3） */}
+      {/* 识别入口：拍照 OCR / 相册 OCR */}
       <View className='photo-row'>
         <View className='photo-btn' onClick={() => chooseImage('camera')}>
           <Text className='photo-btn-ico'>📷</Text>
           <Text className='photo-btn-tit'>拍照识别</Text>
-          <Text className='photo-btn-sub'>拍摄标签自动录入</Text>
+          <Text className='photo-btn-sub'>拍标签自动录入</Text>
         </View>
         <View className='photo-btn' onClick={() => chooseImage('album')}>
           <Text className='photo-btn-ico'>🖼️</Text>
           <Text className='photo-btn-tit'>相册选图</Text>
-          <Text className='photo-btn-sub'>从相册选取照片</Text>
+          <Text className='photo-btn-sub'>选图自动识别</Text>
         </View>
       </View>
+
       {(photoTemp || photoFileID) && (
         <View className='photo-wrap'>
           <Image
@@ -231,7 +263,10 @@ export default function Add() {
             mode='aspectFill'
             onClick={previewPhoto}
           />
-          <View className='photo-tip'>点击图片可预览大图</View>
+          <View className='photo-foot'>
+            <Text className='photo-tip'>点击图片可预览大图</Text>
+            <Text className='photo-retry' onClick={reOcr}>🔄 重新识别</Text>
+          </View>
         </View>
       )}
 
@@ -252,7 +287,7 @@ export default function Add() {
         <View className='field'>
           <Text className='label'>分类<Text className='req'>*</Text></Text>
           <View className='chips'>
-            {CATEGORIES.map((c) => (
+            {cats.map((c) => (
               <View
                 key={c.key}
                 className={`chip${category === c.key ? ' active' : ''}`}
@@ -261,80 +296,81 @@ export default function Add() {
                 {c.icon} {c.label}
               </View>
             ))}
+            <View className='chip manage' onClick={() => Taro.navigateTo({ url: '/pages/categories/index' })}>
+              ＋ 分类
+            </View>
           </View>
         </View>
       </View>
 
       <View className='card'>
         <View className='card-title'>日期信息</View>
-        {mode === 'auto' && (
-          <>
-            <View className='field'>
-              <Text className='label'>生产日期<Text className='req'>*</Text></Text>
-              <Picker
-                mode='date'
-                value={productionDate || todayStr()}
-                end={todayStr()}
-                onChange={(e) => setProductionDate(e.detail.value)}
-              >
-                <View
-                  className={`input picker input-box${productionDate ? '' : ' placeholder'}${
-                    ocrHighlight ? ' hl' : ''
-                  }`}
-                >
-                  {productionDate || '选择生产日期'}
-                </View>
-              </Picker>
-            </View>
-            <View className='field'>
-              <Text className='label'>保质期<Text className='req'>*</Text></Text>
-              <View className='shelf-row'>
-                <Input
-                  className='input shelf-amount input-box'
-                  type='number'
-                  value={shelfAmount}
-                  placeholder='如：6'
-                  placeholderClass='placeholder'
-                  onInput={(e) => setShelfAmount(e.detail.value)}
-                />
-                <Picker
-                  mode='selector'
-                  range={unitLabels}
-                  onChange={(e) => setShelfUnit(SHELF_UNITS[Number(e.detail.value)].key)}
-                >
-                  <View className={`input picker unit input-box${ocrHighlight ? ' hl' : ''}`}>
-                    {unit.label} ▾
-                  </View>
-                </Picker>
-              </View>
-            </View>
-            {expiryPreview && (
-              <View className='preview-line'>
-                到期日 <Text className='preview-strong'>{expiryPreview}</Text>
-                <Text className='preview-tag'>自动计算</Text>
-              </View>
-            )}
-          </>
-        )}
-
-        {mode === 'direct' && (
-          <View className='field'>
-            <Text className='label'>到期日<Text className='req'>*</Text></Text>
+        <View className='field'>
+          <Text className='label'>到期日<Text className='req'>*</Text></Text>
+          <View className='expiry-row'>
             <Picker
               mode='date'
               value={expiryDate || todayStr()}
-              onChange={(e) => setExpiryDate(e.detail.value)}
+              onChange={(e) => {
+                setExpiryDate(e.detail.value);
+                setExpiryAuto(false);
+              }}
             >
               <View
                 className={`input picker input-box${expiryDate ? '' : ' placeholder'}${
-                  ocrHighlight ? ' hl' : ''
+                  hl ? ' hl' : ''
                 }`}
               >
                 {expiryDate || '选择到期日'}
               </View>
             </Picker>
+            {expiryAuto && <Text className='auto-tag'>自动计算</Text>}
           </View>
-        )}
+        </View>
+
+        <View className='field'>
+          <Text className='label'>生产日期<Text className='opt'>选填</Text></Text>
+          <Picker
+            mode='date'
+            value={productionDate || todayStr()}
+            end={todayStr()}
+            onChange={(e) => setProductionDate(e.detail.value)}
+          >
+            <View
+              className={`input picker input-box${productionDate ? '' : ' placeholder'}${
+                hl ? ' hl' : ''
+              }`}
+            >
+              {productionDate || '选择生产日期'}
+            </View>
+          </Picker>
+        </View>
+
+        <View className='field'>
+          <Text className='label'>保质期<Text className='opt'>选填</Text></Text>
+          <View className='shelf-row'>
+            <Input
+              className='input shelf-amount input-box'
+              type='number'
+              value={shelfAmount}
+              placeholder='如：6'
+              placeholderClass='placeholder'
+              onInput={(e) => setShelfAmount(e.detail.value)}
+            />
+            <Picker
+              mode='selector'
+              range={SHELF_UNITS.map((u) => u.label)}
+              onChange={(e) => setShelfUnit(SHELF_UNITS[Number(e.detail.value)].key)}
+            >
+              <View className={`input picker unit input-box${hl ? ' hl' : ''}`}>
+                {unit.label} ▾
+              </View>
+            </Picker>
+          </View>
+        </View>
+        <View className='calc-hint'>
+          填了「生产日期 + 保质期」会自动算出到期日，也可以直接选到期日
+        </View>
       </View>
 
       <View className='card'>

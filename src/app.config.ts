@@ -4,6 +4,7 @@ export default {
     'pages/index/index',
     'pages/add/index',
     'pages/detail/index',
+    'pages/categories/index',
     'pages/profile/index'
   ],
   window: {

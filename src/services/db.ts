@@ -86,6 +86,20 @@ export async function clearAllProducts(): Promise<number> {
   return all.length;
 }
 
+/** 某分类下的产品数（删除自定义分类前确认 / 迁移判断用） */
+export async function countProductsInCategory(key: string): Promise<number> {
+  const res = await productsCol().where({ category: key }).count();
+  return res.total;
+}
+
+/** 批量把 from 分类下的产品改到 to 分类（客户端批量 update 仅作用于本人数据） */
+// Taro 的 Query 类型未声明批量 update，运行时可用，这里放宽
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function reassignCategory(from: string, to: string): Promise<any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (productsCol().where({ category: from }) as any).update({ data: { category: to } });
+}
+
 /** 上传包装照片到云存储，返回 fileID */
 export async function uploadPhoto(filePath: string): Promise<string> {
   const ext = /\.png$/i.test(filePath) ? 'png' : 'jpg';

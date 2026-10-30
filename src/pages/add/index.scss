@@ -2,33 +2,7 @@
   padding-bottom: 280rpx;
 }
 
-/* —— 录入模式分段控件 —— */
-.seg {
-  display: flex;
-  background: #eef1f6;
-  border-radius: 20rpx;
-  padding: 8rpx;
-  margin-bottom: 28rpx;
-}
-
-.seg-item {
-  flex: 1;
-  text-align: center;
-  padding: 18rpx 0;
-  font-size: 28rpx;
-  color: var(--text-2);
-  border-radius: 14rpx;
-  transition: all 0.25s ease;
-}
-
-.seg-item.active {
-  background: var(--card);
-  color: var(--primary);
-  font-weight: 600;
-  box-shadow: 0 6rpx 16rpx rgba(31, 35, 41, 0.08);
-}
-
-/* —— 拍照识别入口卡片 —— */
+/* —— 识别入口：拍照 / 相册 / 语音 —— */
 .photo-row {
   display: flex;
   margin-bottom: 28rpx;
@@ -89,7 +63,21 @@
   margin-top: 12rpx;
   font-size: 22rpx;
   color: var(--text-3);
-  text-align: center;
+}
+
+.photo-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.photo-retry {
+  margin-top: 12rpx;
+  padding: 8rpx 24rpx;
+  font-size: 24rpx;
+  color: var(--primary);
+  background: rgba(61, 126, 255, 0.1);
+  border-radius: 999rpx;
 }
 
 /* —— 卡片分区 —— */
@@ -222,32 +210,48 @@
   font-weight: 600;
 }
 
-/* —— 到期日自动计算提示 —— */
-.preview-line {
+.chip.manage {
+  border-style: dashed;
+  color: var(--primary);
+}
+
+/* 选填标记 */
+.opt {
+  margin-left: 10rpx;
+  padding: 2rpx 12rpx;
+  font-size: 20rpx;
+  font-weight: 400;
+  color: var(--text-3);
+  background: #f4f5f7;
+  border-radius: 8rpx;
+}
+
+/* 到期日行：选择器 + 「自动计算」标记 */
+.expiry-row {
   display: flex;
   align-items: center;
-  margin: 8rpx 0 20rpx;
-  padding: 18rpx 24rpx;
-  background: rgba(61, 126, 255, 0.06);
-  border-radius: 14rpx;
-  font-size: 26rpx;
-  color: var(--text-2);
 }
 
-.preview-strong {
-  color: var(--primary);
-  font-weight: 700;
-  font-size: 30rpx;
-  margin-left: 12rpx;
+.expiry-row Picker {
+  flex: 1;
+  min-width: 0;
 }
 
-.preview-tag {
-  margin-left: auto;
-  padding: 4rpx 16rpx;
+.auto-tag {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding: 6rpx 18rpx;
   background: rgba(61, 126, 255, 0.1);
-  border-radius: 20rpx;
+  border-radius: 999rpx;
   font-size: 20rpx;
   color: var(--primary);
+}
+
+/* 日期卡底部说明 */
+.calc-hint {
+  padding: 16rpx 4rpx 20rpx;
+  font-size: 22rpx;
+  color: var(--text-3);
 }
 
 /* —— 备注 —— */

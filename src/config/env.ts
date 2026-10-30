@@ -12,6 +12,6 @@
  *      - 剩余天数 days_left    （类型：number）
  *      - 到期日   expiry_date  （类型：date）
  */
-export const CLOUD_ENV_ID = '';
+export const CLOUD_ENV_ID = 'cloud1-d4gpvhlk6ea2ca068';
 
 export const SUBSCRIBE_TEMPLATE_ID = '';
