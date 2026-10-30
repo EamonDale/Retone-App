@@ -6,9 +6,11 @@ export function todayStr(): string {
   return format(new Date(), 'yyyy-MM-dd');
 }
 
-/** 'yyyy-MM-dd' → 毫秒时间戳（当天 00:00 本地时间） */
+/** 'yyyy-MM-dd' → 毫秒时间戳（当天 00:00 本地时间）
+ *  手动解析：部分 iOS 机型把无时区 ISO 字符串按 UTC 解析（差 8 小时导致日期错位） */
 export function dateStrToTs(s: string): number {
-  return new Date(`${s}T00:00:00`).getTime();
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1).getTime();
 }
 
 /** 毫秒时间戳 → 'yyyy-MM-dd' */
@@ -22,7 +24,7 @@ export function tsToDateStr(ts: number): string {
  * 例：2026-10-22 + 6 个月 → 2027-04-22
  */
 export function calcExpiry(productionDate: string, amount: number, unit: ShelfUnitKey): string {
-  const base = startOfDay(new Date(`${productionDate}T00:00:00`));
+  const base = new Date(dateStrToTs(productionDate));
   const d =
     unit === 'day'
       ? addDays(base, amount)

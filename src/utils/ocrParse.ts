@@ -54,9 +54,10 @@ export function extractDates(text: string): string[] {
   return Array.from(out).sort();
 }
 
-/** 提取保质期：数字 + 单位，无单位时默认按「月」 */
+/** 提取保质期：数字 + 单位，无单位时默认按「月」
+ *  排除「保质期至/到」（那是到期日标签，不是时长），数字限 3 位防误吞日期 */
 export function extractShelfLife(text: string): ShelfLife | undefined {
-  const re = /(?:保质期|shelf\s*life)\s*[：:]?\s*(\d{1,4})\s*(天|日|个月|月|年|days?|months?|years?|[DMY])?/i;
+  const re = /(?:保质期(?![至到])|shelf\s*life)\s*[：:]?\s*(\d{1,3})\s*(天|日|个月|月|年|days?|months?|years?|[DMY])?/i;
   const m = re.exec(text);
   if (!m) return undefined;
   const amount = parseInt(m[1], 10);

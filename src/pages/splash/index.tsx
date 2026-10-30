@@ -1,5 +1,5 @@
 import { View, Text } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import Taro, { useReady } from '@tarojs/taro';
 import { useEffect, useRef } from 'react';
 import './index.scss';
 
@@ -10,17 +10,22 @@ import './index.scss';
  */
 export default function Splash() {
   const leaving = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  useReady(() => {
+    // onReady = 页面初次渲染完成，此后才允许发起路由跳转。
+    // 真机（尤其真机调试）首屏路由耗时可能超过固定延时，
+    // 过早 switchTab 会触发 routeDone webviewId 报错。
+    timerRef.current = setTimeout(() => {
       if (leaving.current) return;
       leaving.current = true;
       Taro.switchTab({ url: '/pages/index/index' }).catch(() => {
         Taro.reLaunch({ url: '/pages/index/index' });
       });
     }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  });
 
   return (
     <View className='splash'>

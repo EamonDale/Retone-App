@@ -33,6 +33,5 @@ export default {
       }
     ]
   },
-  cloud: true,
-  lazyCodeLoading: 'requiredComponents'
+  cloud: true
 };

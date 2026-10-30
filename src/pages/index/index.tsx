@@ -27,7 +27,10 @@ export default function Index() {
   const load = useCallback(async () => {
     try {
       const list = await fetchActiveProducts();
-      list.sort((a, b) => daysLeftOfTs(a.expiryDate) - daysLeftOfTs(b.expiryDate));
+      // 预计算剩余天数，排序/统计/筛选复用（避免在 sort 比较器里反复调用 date-fns）
+      list.sort(
+        (a, b) => daysLeftOfTs(a.expiryDate) - daysLeftOfTs(b.expiryDate)
+      );
       setProducts(list);
     } catch (e) {
       console.error('[index] 加载失败', e);
@@ -48,26 +51,32 @@ export default function Index() {
     load().finally(() => Taro.stopPullDownRefresh());
   });
 
+  // 剩余天数只按产品列表变化计算一次，stats / filtered 共用
+  const daysById = useMemo(
+    () => new Map(products.map((p) => [p._id, daysLeftOfTs(p.expiryDate)])),
+    [products]
+  );
+
   const stats = useMemo(() => {
     let expiring = 0;
     let expired = 0;
     for (const p of products) {
-      const d = daysLeftOfTs(p.expiryDate);
+      const d = daysById.get(p._id)!;
       if (d < 0) expired++;
       else if (d <= 10) expiring++;
     }
     return { all: products.length, expiring, expired };
-  }, [products]);
+  }, [products, daysById]);
 
   const filtered = useMemo(
     () =>
       products.filter((p) => {
-        const d = daysLeftOfTs(p.expiryDate);
+        const d = daysById.get(p._id)!;
         if (stat === 'expiring' && !(d >= 0 && d <= 10)) return false;
         if (stat === 'expired' && d >= 0) return false;
         return category === 'all' || p.category === category;
       }),
-    [products, category, stat]
+    [products, daysById, category, stat]
   );
 
   const goDetail = (p: Product) => Taro.navigateTo({ url: `/pages/detail/index?id=${p._id}` });
