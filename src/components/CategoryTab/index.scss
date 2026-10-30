@@ -1,0 +1,40 @@
+.cate-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.cate-row {
+  display: inline-flex;
+  padding: 8rpx 4rpx 16rpx;
+}
+
+.cate-item {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 16rpx;
+  padding: 12rpx 26rpx;
+  background: var(--card);
+  border-radius: 40rpx;
+  border: 2rpx solid var(--line);
+  transition: all 0.2s;
+}
+
+.cate-item.active {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.cate-icon {
+  font-size: 26rpx;
+  margin-right: 8rpx;
+}
+
+.cate-label {
+  font-size: 26rpx;
+  color: var(--text-2);
+}
+
+.cate-item.active .cate-label {
+  color: #ffffff;
+  font-weight: 600;
+}

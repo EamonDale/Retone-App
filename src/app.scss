@@ -1,0 +1,26 @@
+/* 全局样式与设计变量 */
+page {
+  --primary: #3D7EFF;
+  --bg: #F6F7FB;
+  --card: #FFFFFF;
+  --text: #1F2329;
+  --text-2: #6B7280;
+  --text-3: #9AA0A6;
+  --line: #EEF0F4;
+  --red: #FF3B30;
+  --orange: #FF9500;
+  --green: #34C759;
+  --gray: #8E8E93;
+
+  background: var(--bg);
+  color: var(--text);
+  font-size: 28rpx;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 24rpx 24rpx 220rpx;
+  box-sizing: border-box;
+}

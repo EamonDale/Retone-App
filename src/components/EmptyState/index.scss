@@ -1,0 +1,23 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 140rpx 0 100rpx;
+}
+
+.empty-emoji {
+  font-size: 120rpx;
+  margin-bottom: 32rpx;
+}
+
+.empty-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.empty-hint {
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: var(--text-3);
+}

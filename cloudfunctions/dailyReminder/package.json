@@ -1,0 +1,9 @@
+{
+  "name": "dailyReminder",
+  "version": "1.0.0",
+  "description": "每天 9:00 定时扫描到期产品并发送订阅消息",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

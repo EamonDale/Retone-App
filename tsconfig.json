@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "lib": ["ES2020", "DOM"],
+    "strict": false,
+    "allowJs": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "removeComments": false,
+    "typeRoots": ["node_modules/@types"],
+    "types": ["webpack-env", "node"]
+  },
+  "include": ["src", "types"],
+  "exclude": ["node_modules", "dist", "cloudfunctions"]
+}

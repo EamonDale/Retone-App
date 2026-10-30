@@ -1,0 +1,156 @@
+.detail-page {
+  padding-bottom: 60rpx;
+}
+
+.missing {
+  display: block;
+  text-align: center;
+  margin-top: 200rpx;
+  color: var(--text-3);
+}
+
+.hero {
+  position: relative;
+  height: 480rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+}
+
+.hero-zoom {
+  position: absolute;
+  right: 20rpx;
+  bottom: 20rpx;
+  padding: 8rpx 20rpx;
+  background: rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+  font-size: 22rpx;
+  border-radius: 24rpx;
+}
+
+.hero-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-emoji {
+  font-size: 110rpx;
+  margin-bottom: 20rpx;
+}
+
+.hero-tip {
+  font-size: 26rpx;
+  color: var(--text-3);
+}
+
+.detail-card {
+  margin-top: 24rpx;
+  background: var(--card);
+  border-radius: 20rpx;
+  padding: 30rpx;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.p-name {
+  flex: 1;
+  font-size: 38rpx;
+  font-weight: 700;
+  color: var(--text);
+  margin-right: 16rpx;
+}
+
+.p-cat {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--text-2);
+}
+
+.days-block {
+  display: flex;
+  align-items: center;
+  margin: 24rpx 0;
+  padding: 24rpx;
+  background: #F7F8FA;
+  border-radius: 16rpx;
+}
+
+.days-text {
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.used-badge {
+  margin-left: 20rpx;
+  padding: 6rpx 18rpx;
+  background: var(--gray);
+  color: #ffffff;
+  font-size: 22rpx;
+  border-radius: 20rpx;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 2rpx solid var(--line);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row-label {
+  font-size: 27rpx;
+  color: var(--text-3);
+}
+
+.row-value {
+  font-size: 27rpx;
+  color: var(--text);
+  text-align: right;
+  max-width: 70%;
+}
+
+.actions {
+  display: flex;
+  margin-top: 40rpx;
+}
+
+.action-btn {
+  flex: 1;
+  margin: 0 10rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 44rpx;
+  padding: 8rpx 0;
+}
+
+.action-btn.edit {
+  background: var(--card);
+  color: var(--primary);
+  border: 2rpx solid var(--primary);
+}
+
+.action-btn.use {
+  background: var(--green);
+  color: #ffffff;
+}
+
+.action-btn.del {
+  background: var(--card);
+  color: var(--red);
+  border: 2rpx solid var(--red);
+}

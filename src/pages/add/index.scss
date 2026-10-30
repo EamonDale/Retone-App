@@ -1,0 +1,297 @@
+.add-page {
+  padding-bottom: 280rpx;
+}
+
+/* —— 录入模式分段控件 —— */
+.seg {
+  display: flex;
+  background: #eef1f6;
+  border-radius: 20rpx;
+  padding: 8rpx;
+  margin-bottom: 28rpx;
+}
+
+.seg-item {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  font-size: 28rpx;
+  color: var(--text-2);
+  border-radius: 14rpx;
+  transition: all 0.25s ease;
+}
+
+.seg-item.active {
+  background: var(--card);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 6rpx 16rpx rgba(31, 35, 41, 0.08);
+}
+
+/* —— 拍照识别入口卡片 —— */
+.photo-row {
+  display: flex;
+  margin-bottom: 28rpx;
+}
+
+.photo-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32rpx 0 26rpx;
+  background: var(--card);
+  border: 2rpx dashed #c9d3e4;
+  border-radius: 24rpx;
+  transition: all 0.2s ease;
+}
+
+.photo-btn + .photo-btn {
+  margin-left: 20rpx;
+}
+
+.photo-btn:active {
+  transform: scale(0.97);
+  background: #f4f7ff;
+  border-color: var(--primary);
+}
+
+.photo-btn-ico {
+  font-size: 52rpx;
+  line-height: 1.2;
+}
+
+.photo-btn-tit {
+  margin-top: 10rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.photo-btn-sub {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: var(--text-3);
+}
+
+.photo-wrap {
+  margin-bottom: 28rpx;
+}
+
+.photo-preview {
+  width: 100%;
+  height: 360rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(31, 35, 41, 0.08);
+}
+
+.photo-tip {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* —— 卡片分区 —— */
+.card {
+  background: var(--card);
+  border-radius: 24rpx;
+  padding: 8rpx 28rpx 6rpx;
+  margin-bottom: 28rpx;
+  box-shadow: 0 6rpx 20rpx rgba(31, 35, 41, 0.05);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0 8rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.card-title::before {
+  content: '';
+  width: 8rpx;
+  height: 28rpx;
+  border-radius: 4rpx;
+  background: linear-gradient(180deg, #5b95ff, var(--primary));
+  margin-right: 14rpx;
+}
+
+.field {
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid var(--line);
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.label {
+  display: block;
+  font-size: 26rpx;
+  color: var(--text-2);
+  margin-bottom: 16rpx;
+}
+
+.req {
+  color: var(--red);
+  margin-left: 6rpx;
+}
+
+.input {
+  width: 100%;
+  padding: 18rpx 0;
+  font-size: 30rpx;
+  color: var(--text);
+}
+
+/* 输入框/选择器统一外观：固定高度，输入与选择器视觉一致 */
+.input-box {
+  box-sizing: border-box;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: #f7f8fa;
+  border-radius: 14rpx;
+  border: 2rpx solid transparent;
+  font-size: 30rpx;
+  color: var(--text);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+/* Picker 触发区为 View，用 flex 垂直居中（原生 Input 自身垂直居中） */
+.picker.input-box {
+  display: flex;
+  align-items: center;
+}
+
+.placeholder {
+  color: var(--text-3);
+}
+
+/* OCR 识别结果黄色高亮（PRD 3.2.3） */
+.hl {
+  background: #fff7d6 !important;
+  border-color: #ffc53d;
+}
+
+.shelf-row {
+  display: flex;
+  align-items: center;
+}
+
+.shelf-amount {
+  flex: 1;
+  min-width: 0;
+}
+
+.unit {
+  flex-shrink: 0;
+  width: 180rpx;
+  margin-left: 20rpx;
+  justify-content: center;
+  text-align: center;
+}
+
+/* —— 分类选择 —— */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 14rpx 30rpx;
+  margin: 0 16rpx 16rpx 0;
+  background: #f7f8fa;
+  border: 2rpx solid var(--line);
+  border-radius: 36rpx;
+  font-size: 26rpx;
+  color: var(--text-2);
+  transition: all 0.2s ease;
+}
+
+.chip:active {
+  transform: scale(0.94);
+}
+
+.chip.active {
+  background: rgba(61, 126, 255, 0.08);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* —— 到期日自动计算提示 —— */
+.preview-line {
+  display: flex;
+  align-items: center;
+  margin: 8rpx 0 20rpx;
+  padding: 18rpx 24rpx;
+  background: rgba(61, 126, 255, 0.06);
+  border-radius: 14rpx;
+  font-size: 26rpx;
+  color: var(--text-2);
+}
+
+.preview-strong {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 30rpx;
+  margin-left: 12rpx;
+}
+
+.preview-tag {
+  margin-left: auto;
+  padding: 4rpx 16rpx;
+  background: rgba(61, 126, 255, 0.1);
+  border-radius: 20rpx;
+  font-size: 20rpx;
+  color: var(--primary);
+}
+
+/* —— 备注 —— */
+.textarea {
+  width: 100%;
+  height: 140rpx;
+  padding: 20rpx 24rpx;
+  box-sizing: border-box;
+  background: #f7f8fa;
+  border-radius: 14rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+/* —— 底部固定保存栏 —— */
+.save-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 -6rpx 24rpx rgba(31, 35, 41, 0.06);
+}
+
+.save-btn {
+  width: 100%;
+  background: linear-gradient(90deg, #4a8bff, #3d7eff);
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 48rpx;
+  padding: 12rpx 0;
+  box-shadow: 0 10rpx 24rpx rgba(61, 126, 255, 0.28);
+}
+
+.save-btn::after {
+  border: none;
+}
+
+.save-btn[disabled] {
+  opacity: 0.6;
+  background: linear-gradient(90deg, #4a8bff, #3d7eff);
+  color: #ffffff;
+}

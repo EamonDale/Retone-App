@@ -1,0 +1,54 @@
+{
+  "miniprogramRoot": "dist/",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "compileType": "miniprogram",
+  "projectname": "Resound%20App",
+  "description": "留响 Retone —— 拍照记录产品保质期，到点微信订阅消息提醒",
+  "appid": "wxcc28431733a6b4f9",
+  "libVersion": "latest",
+  "setting": {
+    "es6": false,
+    "enhance": true,
+    "postcss": false,
+    "minified": false,
+    "urlCheck": true,
+    "coverView": true,
+    "lazyloadPlaceholderEnable": false,
+    "ignoreUploadUnusedFiles": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false
+  },
+  "condition": {},
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
+  },
+  "packOptions": {
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "prebundle"
+      },
+      {
+        "type": "regexp",
+        "value": "\\.map$"
+      }
+    ],
+    "include": []
+  },
+  "simulatorPluginLibVersion": {}
+}

@@ -1,0 +1,9 @@
+{
+  "name": "ocrProxy",
+  "version": "1.0.0",
+  "description": "OCR 代理：优先微信 OCR 插件，降级百度 OCR",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

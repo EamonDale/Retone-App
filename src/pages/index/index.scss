@@ -1,0 +1,61 @@
+.index-page {
+  padding-bottom: 260rpx;
+}
+
+.guide {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding: 20rpx 24rpx;
+  background: #FFF7E6;
+  border: 2rpx solid #FFD591;
+  border-radius: 16rpx;
+}
+
+.guide-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: #874D00;
+}
+
+.guide-btn {
+  padding: 8rpx 28rpx;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 600;
+  border-radius: 28rpx;
+}
+
+.guide-close {
+  margin-left: 20rpx;
+  padding: 4rpx 8rpx;
+  font-size: 26rpx;
+  color: #B8860B;
+}
+
+.fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: 220rpx;
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 12rpx 32rpx rgba(61, 126, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab:active {
+  transform: scale(0.92);
+}
+
+.fab-plus {
+  color: #ffffff;
+  font-size: 64rpx;
+  font-weight: 300;
+  line-height: 1;
+  margin-top: -6rpx;
+}
