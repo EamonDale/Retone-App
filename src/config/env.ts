@@ -14,4 +14,4 @@
  */
 export const CLOUD_ENV_ID = 'cloud1-d4gpvhlk6ea2ca068';
 
-export const SUBSCRIBE_TEMPLATE_ID = '';
+export const SUBSCRIBE_TEMPLATE_ID = 'HN2z4dFjnnv-aysNg4_noG25DG663RFnyqfFU-2Ld4A';

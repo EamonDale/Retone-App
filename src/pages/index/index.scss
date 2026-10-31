@@ -1,11 +1,50 @@
 .index-page {
-  padding-bottom: 260rpx;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.top-section {
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+.bottom-section {
+  flex: 1;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.search-bar {
+  margin: 16rpx 24rpx;
+  padding: 0 24rpx;
+  background: var(--card);
+  border-radius: 40rpx;
+  box-shadow: 0 4rpx 12rpx rgba(31, 35, 41, 0.06);
+}
+
+.search-input {
+  height: 80rpx;
+  font-size: 28rpx;
+  color: var(--text);
+}
+
+.search-input::placeholder {
+  color: var(--text-3);
+}
+
+.search-input::after {
+  border: none;
 }
 
 .guide {
   display: flex;
   align-items: center;
-  margin-bottom: 20rpx;
+  margin: 16rpx 24rpx 20rpx;
   padding: 20rpx 24rpx;
   background: #FFF7E6;
   border: 2rpx solid #FFD591;
@@ -34,10 +73,23 @@
   color: #B8860B;
 }
 
+.list-scroll {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.list {
+  min-height: 100%;
+  padding-bottom: 20rpx;
+}
+
 .fab {
   position: fixed;
   right: 40rpx;
-  bottom: 220rpx;
+  bottom: calc(220rpx + env(safe-area-inset-bottom));
   width: 108rpx;
   height: 108rpx;
   border-radius: 50%;

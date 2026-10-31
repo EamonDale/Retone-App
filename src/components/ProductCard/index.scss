@@ -2,8 +2,10 @@
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
   margin-bottom: 20rpx;
   padding: 24rpx;
+  box-sizing: border-box;
   background: var(--card);
   border-radius: 20rpx;
   overflow: hidden;

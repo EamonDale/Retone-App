@@ -20,6 +20,14 @@ export interface Product {
   createdAt: number;
   /** 最近一次发提醒的日期（yyyy-MM-dd），用于云函数去重 */
   lastRemindDate?: string;
+  /** 产品数量 */
+  stockQuantity?: number;
+  /** 药品功效（仅在药品分类显示） */
+  efficacy?: string;
+  /** 药品用量（仅在药品分类显示） */
+  dosage?: string;
+  /** 存放位置 */
+  location?: string;
 }
 
 /** 用户提醒设置，对应 userSettings 集合（kind: 'settings'） */

@@ -138,6 +138,24 @@ export default function Detail() {
               <Text className='row-value'>{product.shelfLifeLabel || `${product.shelfLifeDays} 天`}</Text>
             </View>
           ) : null}
+          {product.category === 'medicine' && product.efficacy ? (
+            <View className='row'>
+              <Text className='row-label'>产品功效</Text>
+              <Text className='row-value'>{product.efficacy}</Text>
+            </View>
+          ) : null}
+          {product.category === 'medicine' && product.dosage ? (
+            <View className='row'>
+              <Text className='row-label'>用量</Text>
+              <Text className='row-value'>{product.dosage}</Text>
+            </View>
+          ) : null}
+          {product.location ? (
+            <View className='row'>
+              <Text className='row-label'>存放位置</Text>
+              <Text className='row-value'>{product.location}</Text>
+            </View>
+          ) : null}
           {product.note ? (
             <View className='row'>
               <Text className='row-label'>备注</Text>

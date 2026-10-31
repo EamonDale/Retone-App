@@ -1,4 +1,4 @@
-import { View, Text } from '@tarojs/components';
+import { View, Text, Input, ScrollView } from '@tarojs/components';
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro';
 import { useCallback, useMemo, useState } from 'react';
 import ProductCard from '../../components/ProductCard';
@@ -26,6 +26,7 @@ export default function Index() {
   const [showGuide, setShowGuide] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tabs, setTabs] = useState(allTabs());
+  const [searchKeyword, setSearchKeyword] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -85,9 +86,13 @@ export default function Index() {
         const d = daysById.get(p._id)!;
         if (stat === 'expiring' && !(d >= 0 && d <= 10)) return false;
         if (stat === 'expired' && d >= 0) return false;
-        return category === 'all' || p.category === category;
+        if (category !== 'all' && p.category !== category) return false;
+        if (searchKeyword && !p.name.toLowerCase().includes(searchKeyword.toLowerCase())) {
+          return false;
+        }
+        return true;
       }),
-    [products, daysById, category, stat]
+    [products, daysById, category, stat, searchKeyword]
   );
 
   const goDetail = (p: Product) => Taro.navigateTo({ url: `/pages/detail/index?id=${p._id}` });
@@ -104,31 +109,51 @@ export default function Index() {
 
   return (
     <View className='page index-page'>
-      <StatBar {...stats} value={stat} onChange={setStat} />
-      <CategoryTab value={category} onChange={setCategory} tabs={tabs} />
-
-      {showGuide && (
-        <View className='guide'>
-          <Text className='guide-text'>🔔 开启提醒，不错过保质期</Text>
-          <View className='guide-btn' onClick={onGuideTap}>开启</View>
-          <Text className='guide-close' onClick={dismissGuide}>✕</Text>
-        </View>
-      )}
-
-      <View className='list'>
-        {filtered.map((p) => (
-          <ProductCard key={p._id} product={p} onClick={goDetail} />
-        ))}
-        {!filtered.length && !loading && (
-          <EmptyState
-            text={products.length ? '该筛选下暂无产品' : '还没有产品'}
-            hint={products.length ? '换个分类或筛选看看' : '点右下角 + 添加第一个产品'}
+      <View className='top-section'>
+        <StatBar {...stats} value={stat} onChange={setStat} />
+        <View className='search-bar'>
+          <Input
+            className='search-input'
+            value={searchKeyword}
+            placeholder='搜索产品名称'
+            placeholderClass='placeholder'
+            onInput={(e: any) => setSearchKeyword(e.detail.value)}
           />
-        )}
+        </View>
+        <CategoryTab value={category} onChange={setCategory} tabs={tabs} />
       </View>
-
-      <View className='fab' onClick={goAdd}>
-        <Text className='fab-plus'>+</Text>
+      <View className='bottom-section'>
+        {showGuide && (
+          <View className='guide'>
+            <Text className='guide-text'>🔔 开启提醒，不错过保质期</Text>
+            <View className='guide-btn' onClick={onGuideTap}>开启</View>
+            <Text className='guide-close' onClick={dismissGuide}>✕</Text>
+          </View>
+        )}
+        <ScrollView
+          className='list-scroll'
+          scrollY
+          enhanced
+          showScrollbar={false}
+          scrollWithAnimation
+          lowerThreshold={50}
+          upperThreshold={50}
+        >
+          <View className='list'>
+            {filtered.map((p) => (
+              <ProductCard key={p._id} product={p} onClick={goDetail} />
+            ))}
+            {!filtered.length && !loading && (
+              <EmptyState
+                text={products.length ? '该筛选下暂无产品' : '还没有产品'}
+                hint={products.length ? '换个分类或筛选看看' : '点右下角 + 添加第一个产品'}
+              />
+            )}
+          </View>
+        </ScrollView>
+        <View className='fab' onClick={goAdd}>
+          <Text className='fab-plus'>+</Text>
+        </View>
       </View>
     </View>
   );

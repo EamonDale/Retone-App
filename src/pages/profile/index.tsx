@@ -29,13 +29,13 @@ export default function Profile() {
     saveSettings(next).catch((e) => console.warn('[profile] 设置保存失败', e));
   };
 
-  const onAdvanceChange = (e) => {
+  const onAdvanceChange = (e: any) => {
     const v = ADVANCE_OPTIONS[Number(e.detail.value)];
     setAdvanceDays(v);
     persist({ advanceDays: v, remindToday });
   };
 
-  const onRemindTodayChange = (e) => {
+  const onRemindTodayChange = (e: any) => {
     const v = !!e.detail.value;
     setRemindToday(v);
     persist({ advanceDays, remindToday: v });

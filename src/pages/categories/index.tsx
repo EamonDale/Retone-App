@@ -45,7 +45,7 @@ export default function Categories() {
   const builtins = list.filter((c) => !c.custom);
   const iconGroups = searchEmojiGroups(query);
 
-  const onNameInput = (e) => {
+  const onNameInput = (e: any) => {
     const v = e.detail.value;
     setName(v);
     if (!iconManual.current) {
@@ -60,14 +60,24 @@ export default function Categories() {
     setPickerOpen(false);
   };
 
-  const onAdd = async () => {
+  const onAdd = async (): Promise<void> => {
     if (adding) return;
     const label = name.trim();
-    if (!label) return toast('请输入分类名称');
-    if (label.length > MAX_CATEGORY_NAME_LEN) return toast(`名称最长 ${MAX_CATEGORY_NAME_LEN} 字`);
-    if (isCategoryNameTaken(label)) return toast('该分类已存在');
+    if (!label) {
+      toast('请输入分类名称');
+      return;
+    }
+    if (label.length > MAX_CATEGORY_NAME_LEN) {
+      toast(`名称最长 ${MAX_CATEGORY_NAME_LEN} 字`);
+      return;
+    }
+    if (isCategoryNameTaken(label)) {
+      toast('该分类已存在');
+      return;
+    }
     if (customs.length >= MAX_CUSTOM_CATEGORIES) {
-      return toast(`最多 ${MAX_CUSTOM_CATEGORIES} 个自定义分类`);
+      toast(`最多 ${MAX_CUSTOM_CATEGORIES} 个自定义分类`);
+      return;
     }
     setAdding(true);
     try {
@@ -90,12 +100,19 @@ export default function Categories() {
     setEditingName(c.label);
   };
 
-  const confirmEdit = async () => {
+  const confirmEdit = async (): Promise<void> => {
     const label = editingName.trim();
-    if (!label) return toast('名称不能为空');
-    if (label.length > MAX_CATEGORY_NAME_LEN) return toast(`名称最长 ${MAX_CATEGORY_NAME_LEN} 字`);
+    if (!label) {
+      toast('名称不能为空');
+      return;
+    }
+    if (label.length > MAX_CATEGORY_NAME_LEN) {
+      toast(`名称最长 ${MAX_CATEGORY_NAME_LEN} 字`);
+      return;
+    }
     if (list.some((c) => c.key !== editingKey && c.label.toLowerCase() === label.toLowerCase())) {
-      return toast('该分类已存在');
+      toast('该分类已存在');
+      return;
     }
     try {
       await renameCustomCategory(editingKey, label);

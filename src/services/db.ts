@@ -52,12 +52,12 @@ export function fetchAllProducts(): Promise<Product[]> {
 }
 
 export function getProduct(id: string): Promise<Product> {
-  return docRef(productsCol(), id).get().then((r) => r.data as Product);
+  return docRef(productsCol(), id).get().then((r: any) => r.data as Product);
 }
 
 export type NewProductData = Pick<
   Product,
-  'name' | 'category' | 'expiryDate' | 'productionDate' | 'shelfLifeDays' | 'shelfLifeLabel' | 'note' | 'photoFileID'
+  'name' | 'category' | 'expiryDate' | 'productionDate' | 'shelfLifeDays' | 'shelfLifeLabel' | 'note' | 'photoFileID' | 'stockQuantity' | 'efficacy' | 'dosage' | 'location'
 >;
 
 export async function addProduct(data: NewProductData): Promise<string> {

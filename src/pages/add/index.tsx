@@ -4,11 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { addProduct, getProduct, updateProduct, uploadPhoto } from '../../services/db';
 import { loadCustomCategories } from '../../services/categories';
 import { requestSubscribe } from '../../services/notify';
-import { recognizeProductInfo } from '../../services/ocr';
 import { calcExpiry, dateStrToTs, daysLeftOfTs, todayStr, tsToDateStr } from '../../utils/date';
 import { allCategories, SHELF_UNITS } from '../../utils/constants';
 import type { ShelfUnitKey } from '../../utils/constants';
-import type { OcrParseResult } from '../../utils/ocrParse';
 import './index.scss';
 
 const toast = (title: string) => Taro.showToast({ title, icon: 'none' });
@@ -18,8 +16,6 @@ const toast = (title: string) => Taro.showToast({ title, icon: 'none' });
  *
  * 日期填写不区分模式：到期日可直接选择，也可由「生产日期 + 保质期」自动计算，
  * 手动选择的到期日优先，随时可覆盖。
- * 识别自动填：拍照/相册 OCR（云函数 ocrProxy），识别失败给出可操作提示，
- * 用户直接手动填写即可。
  */
 export default function Add() {
   const router = useRouter();
@@ -36,13 +32,14 @@ export default function Add() {
   const [note, setNote] = useState('');
   const [photoTemp, setPhotoTemp] = useState('');
   const [photoFileID, setPhotoFileID] = useState('');
-  const [hl, setHl] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showRecognizeModal, setShowRecognizeModal] = useState(false);
-  const [showTextModal, setShowTextModal] = useState(false);
-  const [textInput, setTextInput] = useState('');
-  const [isRecognizing, setIsRecognizing] = useState(false);
   const [stockQuantity, setStockQuantity] = useState<string>('1');
+  const [labelText, setLabelText] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [efficacy, setEfficacy] = useState('');
+  const [dosage, setDosage] = useState('');
+  const [location, setLocation] = useState('');
+  const recorderManager = Taro.getRecorderManager();
 
   // 编辑模式：回填表单（先同步分类注册表，避免「产品挂在已删分类」时误判）
   useEffect(() => {
@@ -67,6 +64,9 @@ export default function Add() {
         setExpiryAuto(false);
         setNote(p.note || '');
         if (p.photoFileID) setPhotoFileID(p.photoFileID);
+        if (p.efficacy) setEfficacy(p.efficacy);
+        if (p.dosage) setDosage(p.dosage);
+        if (p.location) setLocation(p.location);
       })
       .catch(() => {
         toast('产品加载失败');
@@ -94,71 +94,6 @@ export default function Add() {
     [shelfUnit]
   );
 
-  /** 识别结果统一回填：保质期 / 生产日期 / 到期日 */
-  const applyParsed = (parsed: OcrParseResult) => {
-    let filled = false;
-    if (parsed.shelfLife) {
-      setShelfAmount(String(parsed.shelfLife.amount));
-      setShelfUnit(parsed.shelfLife.unit);
-      filled = true;
-    }
-    if (parsed.productionDate) {
-      setProductionDate(parsed.productionDate);
-      filled = true;
-    }
-    if (parsed.expiryDate) {
-      setExpiryDate(parsed.expiryDate);
-      setExpiryAuto(false);
-      filled = true;
-    }
-    setHl(filled);
-    if (filled) toast('识别完成，请核对高亮字段');
-    else toast('未识别到日期，请手动填写');
-  };
-
-  /** OCR / 云环境问题 → 可操作的提示；其他失败 → 轻提示后手填 */
-  const handleOcrError = (e: unknown) => {
-    console.error('[add] 识别失败', e);
-    const msg = (e as { message?: string })?.message || '';
-    if (/部署|环境|密钥|插件/.test(msg)) {
-      Taro.showModal({ title: '识别功能不可用', content: msg, showCancel: false });
-    } else {
-      toast('识别失败，请手动填写');
-    }
-  };
-
-  /** 拍完/选完图：先上传云存储，再调云函数 OCR（PRD 3.2.3） */
-  const doOcr = async (tempPath: string) => {
-    Taro.showLoading({ title: '识别中…', mask: true });
-    try {
-      const fileID = await uploadPhoto(tempPath);
-      setPhotoFileID(fileID);
-      applyParsed(await recognizeProductInfo(fileID));
-    } catch (e) {
-      handleOcrError(e);
-    } finally {
-      Taro.hideLoading();
-    }
-  };
-
-  /** 对已选照片重新识别（优先复用已上传的 fileID） */
-  const reOcr = async () => {
-    Taro.showLoading({ title: '识别中…', mask: true });
-    try {
-      let fileID = photoFileID;
-      if (!fileID && photoTemp) {
-        fileID = await uploadPhoto(photoTemp);
-        setPhotoFileID(fileID);
-      }
-      if (!fileID) return;
-      applyParsed(await recognizeProductInfo(fileID));
-    } catch (e) {
-      handleOcrError(e);
-    } finally {
-      Taro.hideLoading();
-    }
-  };
-
   const chooseImage = async (sourceType: 'camera' | 'album') => {
     try {
       const res = await Taro.chooseMedia({
@@ -171,7 +106,6 @@ export default function Add() {
       if (!temp) return;
       setPhotoTemp(temp);
       setPhotoFileID('');
-      doOcr(temp);
     } catch {
       // 用户取消
     }
@@ -182,32 +116,71 @@ export default function Add() {
     if (url) Taro.previewImage({ urls: [url] });
   };
 
-  const handleTextRecognize = async () => {
-    const text = textInput.trim();
-    if (!text) {
-      Taro.showToast({ title: '请输入文字', icon: 'none' });
-      return;
-    }
-
-    setIsRecognizing(true);
+  const startRecording = async () => {
     try {
-      const parsed = await recognizeProductInfo(text);
-      applyParsed(parsed);
-      setTextInput('');
+      setIsRecording(true);
+      await recorderManager.start({
+        duration: 60000,
+        format: 'mp3'
+      });
+      toast('正在录音，请说话...');
     } catch (e) {
-      console.error('[add] 文字识别失败', e);
-      toast('识别失败，请检查文字格式');
-    } finally {
-      setIsRecognizing(false);
+      console.error('[add] 开始录音失败', e);
+      setIsRecording(false);
+      toast('录音失败，请手动输入');
     }
   };
 
-  const onSave = async () => {
+  const stopRecording = async () => {
+    try {
+      await recorderManager.stop();
+    } catch (e) {
+      console.error('[add] 停止录音失败', e);
+    }
+  };
+
+  recorderManager.onStop((res) => {
+    const { tempFilePath } = res;
+    // 读取录音文件并提示用户转换为文字
+    const fs = Taro.getFileSystemManager();
+    fs.readFile({
+      filePath: tempFilePath,
+      encoding: 'base64',
+      success: () => {
+        setIsRecording(false);
+        toast('录音已保存，请将录音内容转换为文字粘贴到上方文本域');
+        // 可以在这里调用语音识别 API
+        // 目前需要用户手动转换文字
+      },
+      fail: (err) => {
+        console.error('[add] 读取录音文件失败', err);
+        setIsRecording(false);
+        toast('读取录音失败，请手动输入');
+      }
+    });
+  });
+
+  recorderManager.onError((err) => {
+    console.error('[add] 录音错误', err);
+    setIsRecording(false);
+    toast('录音错误，请手动输入');
+  });
+
+  const onSave = async (): Promise<void> => {
     if (saving) return;
     const nameTrim = name.trim();
-    if (!nameTrim) return toast('请填写产品名称');
-    if (nameTrim.length > 30) return toast('产品名称最长 30 字');
-    if (!expiryDate) return toast('请选择到期日，或填生产日期 + 保质期自动计算');
+    if (!nameTrim) {
+      toast('请填写产品名称');
+      return;
+    }
+    if (nameTrim.length > 30) {
+      toast('产品名称最长 30 字');
+      return;
+    }
+    if (!expiryDate) {
+      toast('请选择到期日，或填生产日期 + 保质期自动计算');
+      return;
+    }
 
     // 新增时趁用户点击手势栈内先请求订阅授权（真机要求在点击行为中调用）
     // 用户点允许 = 攒 1 条推送额度（PRD 3.4.2）
@@ -249,6 +222,12 @@ export default function Add() {
         photoFileID: fileID || '',
         stockQuantity: parseInt(stockQuantity, 10) || 1
       };
+
+      if (category === 'medicine') {
+        data.efficacy = efficacy.trim();
+        data.dosage = dosage.trim();
+      }
+      data.location = location.trim();
       if (editId) {
         await updateProduct(editId, data);
         Taro.showToast({ title: '已保存', icon: 'success' });
@@ -267,19 +246,39 @@ export default function Add() {
 
   return (
     <View className='page add-page'>
-      {/* 识别功能模块 */}
-      <View className='card recognize-card'>
-        <View className='card-title'>识别功能</View>
-        <View className='recognize-section'>
-          <View className='recognize-btn' onClick={() => setShowRecognizeModal(true)}>
-            <View className='recognize-info'>
-              <Text className='recognize-text'>点击选择识别方式</Text>
-              <Text className='recognize-subtext'>支持拍照识别、图片识别、文字识别</Text>
-            </View>
-            <View className='recognize-icon-wrapper'>
-              <Text className='recognize-icon'>🔍</Text>
-            </View>
-          </View>
+      {/* 产品信息识别 */}
+      <View className='card label-card'>
+        <View className='field'>
+          <Textarea
+            className='textarea'
+            value={labelText}
+            maxlength={500}
+            placeholder='粘贴或输入产品标签文字，如：保质期 6 个月，生产日期 2024-01-01'
+            placeholderClass='placeholder'
+            onInput={(e) => setLabelText(e.detail.value)}
+            style={{ height: '160rpx' }}
+          />
+        </View>
+        <View className='action-buttons'>
+          <Button
+            className='action-btn left-btn'
+            disabled={isRecording}
+            onClick={isRecording ? stopRecording : startRecording}
+          >
+            {isRecording ? '⏹️ 停止' : '🎤 语音输入'}
+          </Button>
+          <Button
+            className='action-btn right-btn'
+            onClick={() => {
+              if (labelText.trim()) {
+                toast('识别功能开发中，请手动输入');
+              } else {
+                toast('请先输入或粘贴产品标签文字');
+              }
+            }}
+          >
+            📄 识别文字
+          </Button>
         </View>
       </View>
 
@@ -299,9 +298,6 @@ export default function Add() {
                 <View className='photo-btn-small' onClick={previewPhoto}>
                   预览
                 </View>
-                <View className='photo-btn-small' onClick={() => chooseImage('camera')}>
-                  拍照
-                </View>
                 <View className='photo-btn-small photo-btn-small-red' onClick={() => {
                   setPhotoTemp('');
                   setPhotoFileID('');
@@ -311,12 +307,15 @@ export default function Add() {
               </View>
             </View>
           ) : (
-            <View className='upload-placeholder' onClick={() => chooseImage('album')}>
-              <View className='upload-icon-wrapper'>
-                <Text className='upload-icon'>📷</Text>
+            <View className='photo-upload-buttons'>
+              <View className='upload-btn' onClick={() => chooseImage('album')}>
+                <Text className='upload-btn-icon'>📂</Text>
+                <Text className='upload-btn-text'>相册</Text>
               </View>
-              <Text className='upload-text'>点击上传产品图片</Text>
-              <Text className='upload-subtext'>可选填</Text>
+              <View className='upload-btn' onClick={() => chooseImage('camera')}>
+                <Text className='upload-btn-icon'>📷</Text>
+                <Text className='upload-btn-text'>拍照</Text>
+              </View>
             </View>
           )}
         </View>
@@ -365,6 +364,45 @@ export default function Add() {
             </View>
           </View>
         </View>
+
+        {category === 'medicine' && (
+          <>
+            <View className='field'>
+              <Text className='label'>产品功效</Text>
+              <Input
+                className='input'
+                value={efficacy}
+                maxlength={100}
+                placeholder='如：消炎、止痛'
+                placeholderClass='placeholder'
+                onInput={(e) => setEfficacy(e.detail.value)}
+              />
+            </View>
+            <View className='field'>
+              <Text className='label'>用量</Text>
+              <Input
+                className='input'
+                value={dosage}
+                maxlength={100}
+                placeholder='如：每次1片，每日3次'
+                placeholderClass='placeholder'
+                onInput={(e) => setDosage(e.detail.value)}
+              />
+            </View>
+          </>
+        )}
+
+        <View className='field'>
+          <Text className='label'>存放位置</Text>
+          <Input
+            className='input'
+            value={location}
+            maxlength={50}
+            placeholder='如：冰箱冷藏层、柜子第二层'
+            placeholderClass='placeholder'
+            onInput={(e) => setLocation(e.detail.value)}
+          />
+        </View>
       </View>
 
       <View className='card expiry-card'>
@@ -381,8 +419,7 @@ export default function Add() {
             onChange={(e) => setProductionDate(e.detail.value)}
           >
             <View
-              className={`input picker input-box${productionDate ? '' : ' placeholder'}${hl ? ' hl' : ''
-                }`}
+              className={`input picker input-box${productionDate ? '' : ' placeholder'}`}
             >
               {productionDate || '选择生产日期'}
             </View>
@@ -405,34 +442,31 @@ export default function Add() {
               range={SHELF_UNITS.map((u) => u.label)}
               onChange={(e) => setShelfUnit(SHELF_UNITS[Number(e.detail.value)].key)}
             >
-              <View className={`input picker unit input-box${hl ? ' hl' : ''}`}>
+              <View className={`input picker unit input-box`}>
                 {unit.label} ▾
               </View>
             </Picker>
           </View>
         </View>
         <View className='field'>
-          <Text className='label'>到期日<Text className='req'>*</Text></Text>
-          <View className='expiry-row'>
-            <Picker
-              mode='date'
-              value={expiryDate || todayStr()}
+          <Text className='label'>到期日<Text className='req'>*</Text>{expiryAuto && <Text className='auto-tag'>自动计算</Text>}</Text>
+          <Picker
+            mode='date'
+            value={expiryDate || todayStr()}
               onChange={(e) => {
                 setExpiryDate(e.detail.value);
                 setExpiryAuto(false);
               }}
+          >
+            <View
+              className={`input picker input-box${expiryDate ? '' : ' placeholder'}`}
             >
-              <View
-                className={`input picker input-box${expiryDate ? '' : ' placeholder'}${hl ? ' hl' : ''
-                  }`}
-              >
-                {expiryDate || '选择到期日'}
-              </View>
-            </Picker>
-            {expiryAuto && <Text className='auto-tag'>自动计算</Text>}
-          </View>
+              {expiryDate || '选择到期日'}
+            </View>
+          </Picker>
         </View>
       </View>
+
       <View className='card'>
         <View className='card-title'>备注</View>
         <View className='field'>
@@ -440,92 +474,11 @@ export default function Add() {
             className='textarea'
             value={note}
             maxlength={100}
-            placeholder='如：冰箱门第二层（选填）'
             placeholderClass='placeholder'
             onInput={(e) => setNote(e.detail.value)}
           />
         </View>
       </View>
-
-      {/* 识别弹窗 */}
-      {showRecognizeModal && (
-        <View className='modal-overlay' onClick={() => setShowRecognizeModal(false)}>
-          <View className='modal-content' onClick={(e) => e.stopPropagation()}>
-            <View className='modal-header'>
-              <Text className='modal-title'>选择识别方式</Text>
-              <Text className='modal-close' onClick={() => setShowRecognizeModal(false)}>✕</Text>
-            </View>
-            <View className='modal-body'>
-              <View className='modal-option' onClick={() => {
-                setShowRecognizeModal(false);
-                chooseImage('camera');
-              }}>
-                <View className='modal-option-icon camera-icon'>📷</View>
-                <View className='modal-option-info'>
-                  <Text className='modal-option-text'>拍照识别</Text>
-                  <Text className='modal-option-desc'>拍摄标签自动录入</Text>
-                </View>
-              </View>
-              <View className='modal-option' onClick={() => {
-                setShowRecognizeModal(false);
-                chooseImage('album');
-              }}>
-                <View className='modal-option-icon album-icon'>🖼️</View>
-                <View className='modal-option-info'>
-                  <Text className='modal-option-text'>图片识别</Text>
-                  <Text className='modal-option-desc'>从相册选择图片识别</Text>
-                </View>
-              </View>
-              <View className='modal-option' onClick={() => {
-                setShowRecognizeModal(false);
-                setShowTextModal(true);
-              }}>
-                <View className='modal-option-icon text-icon'>📝</View>
-                <View className='modal-option-info'>
-                  <Text className='modal-option-text'>文字识别</Text>
-                  <Text className='modal-option-desc'>粘贴文字自动解析</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* 文字识别弹窗 */}
-      {showTextModal && (
-        <View className='modal-overlay' onClick={() => setShowTextModal(false)}>
-          <View className='modal-content modal-text-content' onClick={(e) => e.stopPropagation()}>
-            <View className='modal-header'>
-              <Text className='modal-title'>文字识别</Text>
-              <Text className='modal-close' onClick={() => setShowTextModal(false)}>✕</Text>
-            </View>
-            <View className='modal-body modal-text-body'>
-              <Textarea
-                className='text-input'
-                value={textInput}
-                placeholder='请粘贴产品标签上的文字，如：保质期 6 个月，生产日期 2024-01-01'
-                placeholderClass='text-placeholder'
-                onInput={(e) => setTextInput(e.detail.value)}
-                autoHeight
-              />
-              <View className='text-actions'>
-                <Button
-                  className='text-btn'
-                  disabled={!textInput.trim() || isRecognizing}
-                  onClick={handleTextRecognize}
-                >
-                  {isRecognizing ? (
-                    <View className='btn-loading'>
-                      <Text className='loading-icon'>⏳</Text>
-                      <Text className='loading-text'>识别中...</Text>
-                    </View>
-                  ) : '开始识别'}
-                </Button>
-              </View>
-            </View>
-          </View>
-        </View>
-      )}
 
       {/* 底部固定保存栏 */}
       <View className='save-bar'>
