@@ -40,7 +40,7 @@ export default function Detail() {
     days < 0 ? 'expired' : days <= 3 ? 'urgent' : days <= 10 ? 'near' : 'safe';
   const color = COLORS[level];
   const cat = categoryInfo(product.category);
-  const stock = product.stockQuantity || 1;
+  const stock = product.stockQuantity ?? 1;
 
   const previewImage = () => {
     if (product.photoFileID) Taro.previewImage({ urls: [product.photoFileID] });

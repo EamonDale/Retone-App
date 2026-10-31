@@ -67,6 +67,8 @@ export default function Add() {
         if (p.efficacy) setEfficacy(p.efficacy);
         if (p.dosage) setDosage(p.dosage);
         if (p.location) setLocation(p.location);
+        if (p.stockQuantity) setStockQuantity(String(p.stockQuantity));
+        else setStockQuantity('1');
       })
       .catch(() => {
         toast('产品加载失败');
@@ -308,14 +310,14 @@ export default function Add() {
             </View>
           ) : (
             <View className='photo-upload-buttons'>
-              <View className='upload-btn' onClick={() => chooseImage('album')}>
-                <Text className='upload-btn-icon'>📂</Text>
-                <Text className='upload-btn-text'>相册</Text>
-              </View>
-              <View className='upload-btn' onClick={() => chooseImage('camera')}>
-                <Text className='upload-btn-icon'>📷</Text>
-                <Text className='upload-btn-text'>拍照</Text>
-              </View>
+            <View className='upload-btn' onClick={() => chooseImage('album')}>
+              <Text className='upload-btn-icon'>🖼️</Text>
+              <Text className='upload-btn-text'>相册</Text>
+            </View>
+            <View className='upload-btn' onClick={() => chooseImage('camera')}>
+              <Text className='upload-btn-icon'>📸</Text>
+              <Text className='upload-btn-text'>拍照</Text>
+            </View>
             </View>
           )}
         </View>
@@ -474,6 +476,7 @@ export default function Add() {
             className='textarea'
             value={note}
             maxlength={100}
+            placeholder='请填写备注'
             placeholderClass='placeholder'
             onInput={(e) => setNote(e.detail.value)}
           />
