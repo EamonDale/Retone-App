@@ -86,6 +86,14 @@ export async function clearAllProducts(): Promise<number> {
   return all.length;
 }
 
+/** 清除已用完的产品记录 */
+export async function clearUsedUpProducts(): Promise<number> {
+  const all = await fetchAllProducts();
+  const usedUp = all.filter(p => p.status === 'usedUp');
+  await Promise.all(usedUp.map((p) => removeProduct(p._id)));
+  return usedUp.length;
+}
+
 /** 某分类下的产品数（删除自定义分类前确认 / 迁移判断用） */
 export async function countProductsInCategory(key: string): Promise<number> {
   const res = await productsCol().where({ category: key }).count();

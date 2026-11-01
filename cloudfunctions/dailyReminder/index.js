@@ -27,7 +27,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
 
-const MAX_ADVANCE = 7; // 设置里最大提前 7 天，扫描窗口按 7 天算
+const MAX_ADVANCE = 30; // 设置里最大提前 30 天，扫描窗口按 30 天算
 const CN_TZ_OFFSET = 8 * 3600 * 1000;
 
 /** 北京时区的今天，yyyy-MM-dd（云函数跑在 UTC，需 +8 修正） */
@@ -162,9 +162,18 @@ async function runDailyReminder(dryRun) {
           page: `pages/detail/index?id=${p._id}`,
           miniprogramState: process.env.MINIPROGRAM_STATE || 'formal',
           data: {
-            product_name: { value: truncate(p.name, 20) },
-            days_left: { value: left },
-            expiry_date: { value: fmtDate(p.expiryDate) }
+            time1: {
+              value: fmtDate(p.expiryDate)
+            },
+            number2: {
+              value: left
+            },
+            thing3: {
+              value: p.note || ''
+            },
+            thing17: {
+              value: p.location || ''
+            }
           }
         });
         sent++;

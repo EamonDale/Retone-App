@@ -32,8 +32,8 @@ export interface Product {
 
 /** 用户提醒设置，对应 userSettings 集合（kind: 'settings'） */
 export interface UserSettings {
-  /** 提前 1 / 3 / 7 天提醒（PRD 3.4.2） */
-  advanceDays: 1 | 3 | 7;
+  /** 提前 1 / 3 / 7 / 15 / 30 天提醒 */
+  advanceDays: 1 | 3 | 7 | 15 | 30;
   /** 到期当天是否再提醒一次 */
   remindToday: boolean;
 }

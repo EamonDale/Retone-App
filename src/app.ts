@@ -11,12 +11,34 @@ function App({ children }: { children?: React.ReactNode }) {
         env: CLOUD_ENV_ID || undefined,
         traceUser: true
       });
+
       // 预加载自定义分类，供卡片/详情等同步展示场景查询（失败静默走本地缓存）
       loadCustomCategories().catch(() => {});
+
+      // 初始化用户设置（首次使用时）
+      initUserSettings().catch(() => {});
     }
   });
 
   return children;
+}
+
+async function initUserSettings() {
+  try {
+    const { OPENID } = Taro.cloud.getWXContext();
+
+    // 检查用户设置是否存在
+    const res = await Taro.cloud.callFunction({
+      name: 'initUser',
+      data: {
+        action: 'initUser'
+      }
+    });
+
+    console.log('[app] 用户初始化:', res.result);
+  } catch (e) {
+    console.error('[app] 用户初始化失败', e);
+  }
 }
 
 export default App;

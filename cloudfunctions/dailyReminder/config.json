@@ -10,5 +10,9 @@
       "type": "timer",
       "config": "0 0 9 * * * *"
     }
-  ]
+  ],
+  "envVariables": {
+    "TEMPLATE_ID": "HN2z4dFjnnv-aysNg4_noG25DG663RFnyqfFU-2Ld4A",
+    "MINIPROGRAM_STATE": "formal"
+  }
 }

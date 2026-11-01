@@ -141,25 +141,51 @@ export default function Add() {
     }
   };
 
-  recorderManager.onStop((res) => {
+  recorderManager.onStop(async (res) => {
     const { tempFilePath } = res;
-    // 读取录音文件并提示用户转换为文字
-    const fs = Taro.getFileSystemManager();
-    fs.readFile({
-      filePath: tempFilePath,
-      encoding: 'base64',
-      success: () => {
-        setIsRecording(false);
-        toast('录音已保存，请将录音内容转换为文字粘贴到上方文本域');
-        // 可以在这里调用语音识别 API
-        // 目前需要用户手动转换文字
-      },
-      fail: (err) => {
-        console.error('[add] 读取录音文件失败', err);
-        setIsRecording(false);
-        toast('读取录音失败，请手动输入');
+    try {
+      setIsRecording(false);
+      toast('正在识别语音...');
+
+      console.log('[add] 录音完成，开始上传...');
+
+      // 先上传音频文件到云存储
+      const uploadRes = await Taro.cloud.uploadFile({
+        cloudPath: `voice/${Date.now()}.mp3`,
+        filePath: tempFilePath
+      });
+
+      console.log('[add] 上传成功，fileID:', uploadRes.fileID);
+
+      const fileID = uploadRes.fileID;
+
+      // 调用云函数进行语音识别
+      console.log('[add] 调用识别云函数...');
+      const result = await Taro.cloud.callFunction({
+        name: 'recognizeSpeech',
+        data: {
+          action: 'recognize',
+          fileID: fileID
+        }
+      });
+
+      console.log('[add] 识别结果:', result);
+
+      if (result.result && result.result.text) {
+        const recognizedText = result.result.text;
+        setLabelText(recognizedText);
+        toast('识别成功，正在提取信息...');
+
+        // 自动提取信息到表单
+        extractInfoFromText(recognizedText);
+      } else {
+        toast('识别失败，请手动输入');
       }
-    });
+    } catch (e) {
+      console.error('[add] 语音识别失败', e);
+      setIsRecording(false);
+      toast('识别失败，请手动输入');
+    }
   });
 
   recorderManager.onError((err) => {
@@ -167,6 +193,104 @@ export default function Add() {
     setIsRecording(false);
     toast('录音错误，请手动输入');
   });
+
+  // 从识别的文字中提取信息到表单
+  const extractInfoFromText = (text: string) => {
+    const trimmedText = text.trim();
+
+    // 1. 提取产品名称（通常是第一个中文词组）
+    const nameMatch = trimmedText.match(/^([^，。、\n]+)[，。、\n]/);
+    if (nameMatch) {
+      setName(nameMatch[1].trim());
+    }
+
+    // 2. 提取生产日期（支持多种格式）
+    const dateMatch = trimmedText.match(/(\d{4})[-年](\d{1,2})[-月](\d{1,2})日?/);
+    if (dateMatch) {
+      const year = parseInt(dateMatch[1]);
+      const month = parseInt(dateMatch[2]);
+      const day = parseInt(dateMatch[3]);
+      const productionDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      setProductionDate(productionDateStr);
+    }
+
+    // 3. 提取保质期
+    const shelfMatch = trimmedText.match(/保质期\s*(\d+)\s*(天|个月|年)/);
+    if (shelfMatch) {
+      const amount = parseInt(shelfMatch[1]);
+      const unit = shelfMatch[2];
+      setShelfAmount(String(amount));
+
+      // 根据单位设置 shelfUnit
+      let unitKey: ShelfUnitKey = 'month';
+      if (unit === '天') {
+        unitKey = 'day';
+      } else if (unit === '年') {
+        unitKey = 'year';
+      } else {
+        unitKey = 'month';
+      }
+      setShelfUnit(unitKey);
+
+      // 如果有生产日期，自动计算到期日
+      if (productionDate) {
+        const calculatedExpiry = calcExpiry(productionDate, amount, unitKey);
+        setExpiryDate(calculatedExpiry);
+        setExpiryAuto(true);
+      }
+    }
+
+    // 4. 提取分类（根据关键词）
+    const categoryKeywords: Record<string, string> = {
+      '药品': 'medicine',
+      '药': 'medicine',
+      '食品': 'food',
+      '食品': 'food',
+      '饮料': 'drink',
+      '饮料': 'drink',
+      '化妆品': 'beauty',
+      '化妆品': 'beauty',
+      '美妆': 'beauty',
+      '美妆': 'beauty'
+    };
+
+    for (const [keyword, category] of Object.entries(categoryKeywords)) {
+      if (trimmedText.includes(keyword)) {
+        setCategory(category);
+        break;
+      }
+    }
+
+    // 5. 提取产品数量（支持多种格式）
+    const quantityMatch = trimmedText.match(/数量\s*[:：]\s*(\d+)/);
+    if (quantityMatch) {
+      setStockQuantity(quantityMatch[1]);
+    } else {
+      // 尝试从数字后面跟单位（个、箱、盒、包）
+      const quantityMatch2 = trimmedText.match(/^(\d+)\s*(个|箱|盒|包)/);
+      if (quantityMatch2) {
+        setStockQuantity(quantityMatch2[1]);
+      }
+    }
+
+    // 6. 提取存放位置（支持多种格式）
+    const locationMatch = trimmedText.match(/位置\s*[:：]\s*([^，。、\n]+)/);
+    if (locationMatch) {
+      setLocation(locationMatch[1].trim());
+    } else {
+      // 尝试从"放在"后面跟位置
+      const locationMatch2 = trimmedText.match(/放在\s*([^，。、\n]+)/);
+      if (locationMatch2) {
+        setLocation(locationMatch2[1].trim());
+      }
+    }
+
+    // 7. 提取备注（支持多种格式）
+    const noteMatch = trimmedText.match(/备注\s*[:：]\s*([^，。、\n]+)/);
+    if (noteMatch) {
+      setNote(noteMatch[1].trim());
+    }
+  };
 
   const onSave = async (): Promise<void> => {
     if (saving) return;
@@ -264,18 +388,18 @@ export default function Add() {
         <View className='action-buttons'>
           <Button
             className='action-btn left-btn'
-            disabled={isRecording}
             onClick={isRecording ? stopRecording : startRecording}
           >
-            {isRecording ? '⏹️ 停止' : '🎤 语音输入'}
+            {isRecording ? '⏹️ 停止录音' : '🎤 语音输入'}
           </Button>
           <Button
             className='action-btn right-btn'
             onClick={() => {
               if (labelText.trim()) {
-                toast('识别功能开发中，请手动输入');
+                extractInfoFromText(labelText);
+                toast('已提取信息到表单');
               } else {
-                toast('请先输入或粘贴产品标签文字');
+                toast('请先输入或粘贴文字');
               }
             }}
           >

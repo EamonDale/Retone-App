@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "openapi": [
+      "subscribeMessage.send"
+    ]
+  },
+  "envVariables": {
+    "TEMPLATE_ID": "HN2z4dFjnnv-aysNg4_noG25DG663RFnyqfFU-2Ld4A",
+    "MINIPROGRAM_STATE": "formal"
+  }
+}
