@@ -265,7 +265,7 @@ export default function Profile() {
         <View className='p-row'>
           <View className='p-left'>
             <Text className='p-title'>关于留响</Text>
-            <Text className='p-desc'>v1.0.0 · 拍照记录保质期，到点微信提醒</Text>
+            <Text className='p-desc'>v1.0.0 · 记录产品保质期，临近保质期微信提醒</Text>
           </View>
         </View>
       </View>

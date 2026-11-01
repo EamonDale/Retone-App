@@ -46,8 +46,7 @@ export default function Splash() {
       </View>
 
       <Text className='splash-name'>留响 Retone</Text>
-      <Text className='splash-slogan'>拍照记录保质期 · 到期自动提醒</Text>
-
+      <Text className='splash-slogan'>记录保质期 · 到期自动提醒</Text>
       <View className='splash-loading'>
         <View className='dot d1' />
         <View className='dot d2' />

@@ -3,7 +3,7 @@
   "cloudfunctionRoot": "cloudfunctions/",
   "compileType": "miniprogram",
   "projectname": "Resound%20App",
-  "description": "留响 Retone —— 拍照记录产品保质期，到点微信订阅消息提醒",
+  "description": "留响 Retone —— 记录产品保质期，临近保质期微信订阅消息提醒",
   "appid": "wxcc28431733a6b4f9",
   "libVersion": "latest",
   "setting": {

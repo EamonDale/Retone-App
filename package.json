@@ -2,7 +2,7 @@
   "name": "resound-app",
   "version": "1.0.0",
   "private": true,
-  "description": "留响 Retone —— 拍照记录产品保质期，到点通过微信订阅消息提醒",
+  "description": "留响 Retone —— 记录产品保质期，临近保质期通过微信订阅消息提醒",
   "templateInfo": {
     "name": "default",
     "typescript": true,
