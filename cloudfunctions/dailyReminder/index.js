@@ -41,7 +41,7 @@ function beijingDayStartTs(dateStr) {
 }
 
 function fmtDate(ts) {
-  const d = new Date(ts + CN_TZ_OFFSET); // 按北京时区展示
+  const d = new Date(ts + CN_TZ_OFFSET);
   return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日`;
 }
 
@@ -54,24 +54,48 @@ exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
 
   if (event.action === 'addQuota') {
-    return addQuota(OPENID);
+    return addQuota();
+  }
+  if (event.action === 'checkQuota') {
+    return checkQuota();
   }
   // 默认执行每日提醒（定时触发器与手动测试都走这里）
   return runDailyReminder(event.dryRun === true);
 };
 
 /** 用户点「允许订阅」→ 额度 +1（PRD 5.2 subscribeQuota） */
-async function addQuota(openid) {
-  const col = db.collection('subscribeQuota');
-  const res = await col.where({ _openid: openid }).get();
-  if (res.data.length) {
-    await col.doc(res.data[0]._id).update({
-      data: { quota: _.inc(1), updatedAt: Date.now() }
-    });
-  } else {
-    await col.add({ data: { _openid: openid, quota: 1, updatedAt: Date.now() } });
+async function addQuota() {
+  try {
+    const col = db.collection('subscribeQuota');
+    const res = await col.where({ _openid: OPENID }).get();
+    if (res.data.length) {
+      await col.doc(res.data[0]._id).update({
+        data: { quota: _.inc(1), updatedAt: Date.now() }
+      });
+      console.log('[dailyReminder] 用户额度已更新', OPENID, res.data[0].quota + 1);
+    } else {
+      await col.add({ data: { _openid: OPENID, quota: 1, updatedAt: Date.now() } });
+      console.log('[dailyReminder] 新用户额度已创建', OPENID);
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('[dailyReminder] 更新额度失败', e);
+    throw e;
   }
-  return { ok: true };
+}
+
+/** 检查用户订阅额度 */
+async function checkQuota() {
+  try {
+    const col = db.collection('subscribeQuota');
+    const res = await col.where({ _openid: OPENID }).get();
+    const quota = res.data.length > 0 ? res.data[0].quota : 0;
+    console.log('[dailyReminder] 查询额度', OPENID, quota);
+    return { ok: true, quota };
+  } catch (e) {
+    console.error('[dailyReminder] 查询额度失败', e);
+    return { ok: false, quota: 0 };
+  }
 }
 
 async function runDailyReminder(dryRun) {
@@ -83,6 +107,8 @@ async function runDailyReminder(dryRun) {
     return { ok: false, message: '未配置环境变量 TEMPLATE_ID，见 dailyReminder/index.js 头部说明' };
   }
 
+  console.log('[dailyReminder] 开始执行，日期:', todayStr, '扫描范围:', startTs, '-', endTs);
+
   // 1. 查 7 天内到期、未用完的产品（含今天到期，不含已过期）
   const res = await db
     .collection('products')
@@ -93,10 +119,18 @@ async function runDailyReminder(dryRun) {
     .limit(1000)
     .get();
 
+  if (!res.data || res.data.length === 0) {
+    console.log('[dailyReminder] 没有需要提醒的产品');
+    return { ok: true, today: todayStr, matched: 0, users: 0, sent: 0, skipped: {}, errors: [] };
+  }
+
+  console.log('[dailyReminder] 找到', res.data.length, '个产品需要提醒');
+
   // 2. 按 openid 分组
   const byUser = {};
   for (const p of res.data) {
     const left = Math.floor((p.expiryDate - startTs) / 86400000);
+    if (left < 0 || left > MAX_ADVANCE) continue;
     (byUser[p._openid] = byUser[p._openid] || []).push({ product: p, left });
   }
 
@@ -106,6 +140,7 @@ async function runDailyReminder(dryRun) {
 
   for (const openid of Object.keys(byUser)) {
     const list = byUser[openid];
+    console.log('[dailyReminder] 处理用户', openid, '有', list.length, '个产品');
 
     // 用户提醒设置（默认提前 3 天、当天提醒）
     let advanceDays = 3;
@@ -119,6 +154,7 @@ async function runDailyReminder(dryRun) {
       if (s.data.length) {
         advanceDays = [1, 3, 7].includes(s.data[0].advanceDays) ? s.data[0].advanceDays : 3;
         remindToday = s.data[0].remindToday !== false;
+        console.log('[dailyReminder] 用户设置', openid, 'advanceDays:', advanceDays, 'remindToday:', remindToday);
       }
     } catch (e) {
       console.warn('[dailyReminder] 读取设置失败，使用默认', openid, e.message);
@@ -127,12 +163,20 @@ async function runDailyReminder(dryRun) {
     // 3. 订阅额度检查
     let quotaDoc = null;
     if (!dryRun) {
-      const q = await db.collection('subscribeQuota').where({ _openid: openid }).get();
-      if (!q.data.length || q.data[0].quota <= 0) {
+      try {
+        const q = await db.collection('subscribeQuota').where({ _openid: openid }).get();
+        if (!q.data.length || q.data[0].quota <= 0) {
+          console.log('[dailyReminder] 用户', openid, '没有订阅额度，跳过');
+          skipped.noQuota += list.length;
+          continue;
+        }
+        quotaDoc = q.data[0];
+        console.log('[dailyReminder] 用户', openid, '订阅额度:', quotaDoc.quota);
+      } catch (e) {
+        console.error('[dailyReminder] 查询额度失败', e);
         skipped.noQuota += list.length;
         continue;
       }
-      quotaDoc = q.data[0];
     }
 
     for (const { product: p, left } of list) {
@@ -151,41 +195,63 @@ async function runDailyReminder(dryRun) {
 
       if (dryRun) {
         sent++;
+        console.log('[dailyReminder dryRun] 将发送给', openid, '产品:', p._id, '剩余天数:', left);
         continue;
       }
 
       // 4. 发订阅消息，点消息跳到产品详情（PRD 3.4.1）
       try {
-        await cloud.openapi.subscribeMessage.send({
+        const result = await cloud.openapi.subscribeMessage.send({
           touser: openid,
           templateId: process.env.TEMPLATE_ID,
           page: `pages/detail/index?id=${p._id}`,
           miniprogramState: process.env.MINIPROGRAM_STATE || 'formal',
           data: {
-            time1: {
-              value: fmtDate(p.expiryDate)
+            thing1: {
+              value: truncate(p.name || '未命名产品', 20)
             },
             number2: {
               value: left
             },
-            thing3: {
-              value: p.note || ''
-            },
-            thing17: {
-              value: p.location || ''
+            date3: {
+              value: new Date(p.expiryDate + CN_TZ_OFFSET).toISOString().slice(0, 10)
             }
           }
         });
-        sent++;
 
-        // 额度 -1 + 记录已发送，避免重复发（PRD 3.4.3）
-        await db.collection('subscribeQuota').doc(quotaDoc._id).update({
-          data: { quota: _.inc(-1), updatedAt: Date.now() }
-        });
-        await db.collection('products').doc(p._id).update({
-          data: { lastRemindDate: todayStr }
-        });
+        console.log('[dailyReminder] 发送成功', openid, '产品:', p._id, '结果:', result);
+
+        if (result.errCode === 0) {
+          sent++;
+
+          // 额度 -1 + 记录已发送，避免重复发（PRD 3.4.3）
+          try {
+            await db.collection('subscribeQuota').doc(quotaDoc._id).update({
+              data: { quota: _.inc(-1), updatedAt: Date.now() }
+            });
+            await db.collection('products').doc(p._id).update({
+              data: { lastRemindDate: todayStr }
+            });
+            console.log('[dailyReminder] 额度已扣减，已记录提醒日期', openid, p._id);
+          } catch (e) {
+            console.error('[dailyReminder] 更新状态失败', e);
+          }
+        } else {
+          console.error('[dailyReminder] 发送失败', openid, p._id, result);
+          errors.push({
+            openid,
+            productId: p._id,
+            errCode: result.errCode,
+            errMsg: result.errMsg
+          });
+          // 43101 = 用户未订阅 / 无额度，后续发送也会失败，跳出该用户
+          if (result.errCode === 43101) {
+            console.log('[dailyReminder] 用户未授权，停止发送给该用户', openid);
+            break;
+          }
+        }
       } catch (e) {
+        console.error('[dailyReminder] 发送异常', openid, p._id, e);
         errors.push({
           openid,
           productId: p._id,
@@ -193,12 +259,15 @@ async function runDailyReminder(dryRun) {
           errMsg: e.errMsg || e.message
         });
         // 43101 = 用户未订阅 / 无额度，后续发送也会失败，跳出该用户
-        if (e.errCode === 43101) break;
+        if (e.errCode === 43101) {
+          console.log('[dailyReminder] 用户未授权，停止发送给该用户', openid);
+          break;
+        }
       }
     }
   }
 
   const summary = { ok: true, today: todayStr, matched: res.data.length, users: Object.keys(byUser).length, sent, skipped, errors };
-  console.log('[dailyReminder]', JSON.stringify(summary));
+  console.log('[dailyReminder] 执行完成', JSON.stringify(summary));
   return summary;
 }

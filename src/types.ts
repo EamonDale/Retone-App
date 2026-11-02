@@ -16,7 +16,6 @@ export interface Product {
   note?: string;
   /** 云存储 fileID，cloud://... */
   photoFileID?: string;
-  status: 'active' | 'usedUp';
   createdAt: number;
   /** 最近一次发提醒的日期（yyyy-MM-dd），用于云函数去重 */
   lastRemindDate?: string;

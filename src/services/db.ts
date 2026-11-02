@@ -47,7 +47,7 @@ export function fetchActiveProducts(): Promise<Product[]> {
 /** 全部产品（清除数据用） */
 export function fetchAllProducts(): Promise<Product[]> {
   return queryAll<Product>(
-    productsCol().where({ status: db().command.in(['active', 'usedUp']) })
+    productsCol().where({ status: 'active' })
   );
 }
 
@@ -75,23 +75,11 @@ export function removeProduct(id: string): Promise<unknown> {
   return docRef(productsCol(), id).remove();
 }
 
-export function markUsedUp(id: string): Promise<unknown> {
-  return docRef(productsCol(), id).update({ data: { status: 'usedUp' } });
-}
-
 /** 清除数据：删除当前用户的所有产品记录，返回条数（并发删除） */
 export async function clearAllProducts(): Promise<number> {
   const all = await fetchAllProducts();
   await Promise.all(all.map((p) => removeProduct(p._id)));
   return all.length;
-}
-
-/** 清除已用完的产品记录 */
-export async function clearUsedUpProducts(): Promise<number> {
-  const all = await fetchAllProducts();
-  const usedUp = all.filter(p => p.status === 'usedUp');
-  await Promise.all(usedUp.map((p) => removeProduct(p._id)));
-  return usedUp.length;
 }
 
 /** 某分类下的产品数（删除自定义分类前确认 / 迁移判断用） */

@@ -10,14 +10,13 @@ exports.main = async (event, context) => {
     try {
       console.log('[recognizeSpeech] 开始识别，fileID:', fileID);
 
-      // 使用微信云语音识别API
-      const result = await cloud.openapi.translate({
-        lang: 'zh_CN',
-        l: 'zh_CN',
-        media_url: fileID
+      const result = await cloud.openapi.speech.recognize({
+        fileID: fileID,
+        format: 'mp3',
+        rate: 16000
       });
 
-      console.log('[recognizeSpeech] 识别结果:', JSON.stringify(result.result));
+      console.log('[recognizeSpeech] 识别结果:', JSON.stringify(result));
 
       return {
         success: true,

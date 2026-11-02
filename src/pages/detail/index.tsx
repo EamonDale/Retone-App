@@ -1,7 +1,7 @@
 import { View, Text, Image, Button } from '@tarojs/components';
 import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import { useState } from 'react';
-import { getProduct, markUsedUp, removeProduct, updateProduct } from '../../services/db';
+import { getProduct, removeProduct, updateProduct } from '../../services/db';
 import { daysLeftOfTs, describeDays, tsToDateStr } from '../../utils/date';
 import { COLORS, categoryInfo } from '../../utils/constants';
 import type { UrgencyLevel } from '../../utils/constants';
@@ -46,15 +46,6 @@ export default function Detail() {
     if (product.photoFileID) Taro.previewImage({ urls: [product.photoFileID] });
   };
   const onEdit = () => Taro.navigateTo({ url: `/pages/add/index?id=${id}` });
-  const onUsedUp = async () => {
-    try {
-      await markUsedUp(id);
-      Taro.showToast({ title: '已标记用完', icon: 'success' });
-      setTimeout(() => Taro.navigateBack(), 600);
-    } catch {
-      Taro.showToast({ title: '操作失败', icon: 'none' });
-    }
-  };
   const onDelete = async () => {
     const r = await Taro.showModal({
       title: '删除产品',
@@ -118,7 +109,6 @@ export default function Detail() {
 
         <View className='days-block' style={{ color }}>
           <Text className='days-text'>{describeDays(days)}</Text>
-          {product.status === 'usedUp' && <Text className='used-badge'>已用完</Text>}
         </View>
 
         <View className='rows'>
@@ -175,9 +165,6 @@ export default function Detail() {
 
       <View className='actions'>
         <Button className='action-btn edit' onClick={onEdit}>编辑</Button>
-        {product.status === 'active' && (
-          <Button className='action-btn use' onClick={onUsedUp}>标记已用完</Button>
-        )}
         <Button className='action-btn del' onClick={onDelete}>删除</Button>
       </View>
     </View>
